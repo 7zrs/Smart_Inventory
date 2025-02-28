@@ -2,7 +2,21 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+import subprocess
+from django.core.management import execute_from_command_line
+from django.utils.autoreload import run_with_reloader
 
+def start_streamlit():
+    """Start the Streamlit app in a separate subprocess."""
+    streamlit_script = "streamlit_app.py"  # Replace with the path to your Streamlit app
+    try:
+        print("Starting Streamlit server...")
+        subprocess.Popen(
+            [sys.executable, "-m", "streamlit", "run", streamlit_script],
+            env={**os.environ, "STREAMLIT_SERVER_HEADLESS": "true"}  # Suppress welcome message
+        )
+    except Exception as e:
+        print(f"Failed to start Streamlit: {e}")
 
 def main():
     """Run administrative tasks."""
@@ -17,6 +31,9 @@ def main():
         ) from exc
     execute_from_command_line(sys.argv)
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
+    # Start Streamlit only if running the development server and not in the reloader process
+    if len(sys.argv) > 1 and sys.argv[1] == "runserver":
+        if os.environ.get("RUN_MAIN") == "true":  # Check if this is the main process
+            start_streamlit()
     main()
