@@ -1,9 +1,9 @@
 import streamlit as st
 
 # Sidebar navigation
-st.sidebar.title("🏠 Smart Inventory")
+st.sidebar.title("🏢 Smart Inventory")
 st.sidebar.divider()
-st.sidebar.page_link("streamlit_app.py", label="Home")
+st.sidebar.page_link("streamlit_app.py", label="🏠 Home")
 st.sidebar.page_link("pages/1_Inventory.py", label="📦 Inventory")
 st.sidebar.page_link("pages/2_Purchases.py", label="🛒 Purchases")
 st.sidebar.page_link("pages/3_Sales.py", label="💰 Sales")
@@ -14,16 +14,12 @@ st.markdown("### Control your inventory with natural language")
 
 # Chat interface
 user_input = st.text_area("Ask about stock, add notes, or get insights...", height=150)
-col1, col2 = st.columns([1, 0.2])
 
-if col1.button("Send Message"):
+if  st.button("Send Message"):
     if user_input.strip():
         st.success(f"AI: I received your message: '{user_input}'")
     else:
         st.warning("Please enter a message first")
-
-if col2.button("Clear"):
-    st.rerun()
 
 # Example questions
 st.markdown("### Try asking:")
