@@ -24,4 +24,6 @@ urlpatterns = [
     path('', RedirectView.as_view(url='http://127.0.0.1:8501/', permanent=False)),
     path('api/', include('products.urls')),  # Include the products API under /api/
     path('api/inventory/', include('inventory.urls')), # Include the Invetory processes API under /api/
+    path('llm/', include('llm_utilities.urls')),
+
 ]
