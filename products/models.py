@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 class Product(models.Model):
     name = models.CharField(max_length=255)
@@ -22,20 +23,59 @@ class Product(models.Model):
     
 class Purchase(models.Model):
     date = models.DateField()
-    supplier = models.CharField(max_length=255, blank=True, null=True)  # Optional supplier name
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='purchases')
+    id = models.AutoField(primary_key=True)  # Auto-generated ID
+    supplier = models.CharField(max_length=255, blank=True, null=True)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='purchases')
     amount = models.PositiveIntegerField()
-    notes = models.TextField(blank=True, null=True)  # Purchase-specific notes
+    notes = models.TextField(blank=True, null=True)
+
+    def clean(self):
+        """
+        Custom validation for the Purchase model.
+        """
+        # Ensure the purchase amount is greater than zero
+        if self.amount <= 0:
+            raise ValidationError("Purchase amount must be greater than zero.")
+
+    def save(self, *args, **kwargs):
+        """
+        Override the save method to enforce validation before saving.
+        """
+        self.full_clean()  # Run all validations
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.amount} {self.product.unit} of {self.product.name} purchased on {self.date}"
-
+        return f"Purchase of {self.product.name} on {self.date}"
+    
 class Sale(models.Model):
     date = models.DateField()
-    customer = models.CharField(max_length=255, blank=True, null=True)  # Optional customer name
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sales')
+    id = models.AutoField(primary_key=True)  # Auto-generated ID
+    customer = models.CharField(max_length=255, blank=True, null=True)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='sales')
     amount = models.PositiveIntegerField()
-    notes = models.TextField(blank=True, null=True)  # Sale-specific notes
+    notes = models.TextField(blank=True, null=True)
+
+    def clean(self):
+        """
+        Custom validation for the Sale model.
+        """
+        # Ensure the sale amount is greater than zero
+        if self.amount <= 0:
+            raise ValidationError("Sale amount must be greater than zero.")
+
+        # Ensure the sale amount does not exceed the product's stock level
+        if self.product.stock_level() < self.amount:
+            raise ValidationError(
+                f"Cannot sell {self.amount} {self.product.unit}. "
+                f"Only {self.product.stock_level()} {self.product.unit} available."
+            )
+
+    def save(self, *args, **kwargs):
+        """
+        Override the save method to enforce validation before saving.
+        """
+        self.full_clean()  # Run all validations
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.amount} {self.product.unit} of {self.product.name} sold on {self.date}"
+        return f"Sale of {self.product.name} on {self.date}"
