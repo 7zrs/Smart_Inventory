@@ -67,15 +67,7 @@ def create_sale(sale_data):
 
 def update_sale(sale_id, sale_data):
     try:
-        converted_data = {
-            'date': str(sale_data['date']),
-            'customer': str(sale_data['customer']),
-            'product': int(sale_data['product']),
-            'amount': int(sale_data['amount']),
-            'notes': str(sale_data['notes'])
-        }
-        
-        response = requests.put(f"{BASE_URL}{sale_id}/", json=converted_data)
+        response = requests.put(f"{BASE_URL}{sale_id}/", json=sale_data)
         if response.status_code == 200:
             return True
         st.error(f"Failed to update sale: {response.status_code} - {response.text}")
@@ -225,7 +217,7 @@ if st.session_state.show_add_form:
 with col_b:
     if not df.empty:    
         sale_options = ["Select a sale to edit or delete"] + [
-            f"{row['Date']} - {row['Product']} ({row['Amount']})" 
+            f"{row['Date']} - {row['Customer']} - {row['Product']} ({row['Amount']})" 
             for _, row in df.iterrows()
         ]
         
@@ -237,11 +229,22 @@ with col_b:
 
         selected_sale_data = None
         if selected_sale != "Select a sale to edit or delete":
-            selected_date = selected_sale.split(" - ")[0]
-            selected_product = selected_sale.split(" - ")[1].split(" (")[0]
-            selected_sale_id = df[(df['Date'] == selected_date) & (df['Product'] == selected_product)]['ID'].values[0]
-            st.session_state.selected_sale_id = selected_sale_id
-            selected_sale_data = df[df['ID'] == selected_sale_id].iloc[0]
+            parts = selected_sale.split(" - ")
+            selected_date = parts[0]
+            selected_customer = parts[1]
+            selected_product = parts[2].split(" (")[0]
+            selected_amount = parts[2].split(" (")[1].rstrip(")")
+            
+            matching_sales = df[
+                (df['Date'] == selected_date) & 
+                (df['Customer'] == selected_customer) &
+                (df['Product'] == selected_product) &
+                (df['Amount'].astype(str) == selected_amount)
+            ]
+            
+            if not matching_sales.empty:
+                selected_sale_data = matching_sales.iloc[0]
+                st.session_state.selected_sale_id = selected_sale_data['ID']
 
         if selected_sale_data is not None:
             st.write("")
