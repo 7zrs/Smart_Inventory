@@ -67,15 +67,7 @@ def create_purchase(purchase_data):
 
 def update_purchase(purchase_id, purchase_data):
     try:
-        converted_data = {
-            'date': str(purchase_data['date']),
-            'supplier': str(purchase_data['supplier']),
-            'product': int(purchase_data['product']),
-            'amount': int(purchase_data['amount']),
-            'notes': str(purchase_data['notes'])
-        }
-        
-        response = requests.put(f"{BASE_URL}{purchase_id}/", json=converted_data)
+        response = requests.put(f"{BASE_URL}{purchase_id}/", json=purchase_data)
         if response.status_code == 200:
             return True
         st.error(f"Failed to update purchase: {response.status_code} - {response.text}")
@@ -225,7 +217,7 @@ if st.session_state.show_add_form:
 with col_b:
     if not df.empty:    
         purchase_options = ["Select a purchase to edit or delete"] + [
-            f"{row['Date']} - {row['Product']} ({row['Amount']})" 
+            f"{row['Date']} - {row['Supplier']} - {row['Product']} ({row['Amount']})" 
             for _, row in df.iterrows()
         ]
         
@@ -237,11 +229,22 @@ with col_b:
 
         selected_purchase_data = None
         if selected_purchase != "Select a purchase to edit or delete":
-            selected_date = selected_purchase.split(" - ")[0]
-            selected_product = selected_purchase.split(" - ")[1].split(" (")[0]
-            selected_purchase_id = df[(df['Date'] == selected_date) & (df['Product'] == selected_product)]['ID'].values[0]
-            st.session_state.selected_purchase_id = selected_purchase_id
-            selected_purchase_data = df[df['ID'] == selected_purchase_id].iloc[0]
+            parts = selected_purchase.split(" - ")
+            selected_date = parts[0]
+            selected_supplier = parts[1]
+            selected_product = parts[2].split(" (")[0]
+            selected_amount = parts[2].split(" (")[1].rstrip(")")
+            
+            matching_purchases = df[
+                (df['Date'] == selected_date) & 
+                (df['Supplier'] == selected_supplier) &
+                (df['Product'] == selected_product) &
+                (df['Amount'].astype(str) == selected_amount)
+            ]
+            
+            if not matching_purchases.empty:
+                selected_purchase_data = matching_purchases.iloc[0]
+                st.session_state.selected_purchase_id = selected_purchase_data['ID']
 
         if selected_purchase_data is not None:
             st.write("")
