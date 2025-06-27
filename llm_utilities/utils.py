@@ -3,6 +3,9 @@ from django.core.exceptions import ValidationError
 import google.generativeai as genai
 from django.conf import settings
 import requests
+from datetime import date
+
+today = date.today()
 
 def send_to_llm(user_input):
     """
@@ -127,7 +130,10 @@ def send_to_llm(user_input):
         ```
 
     Return the interpreted intent, the corresponding API action, and any necessary details for execution.
-    """
+    Note: Don't send a task to update calculated fields
+    Note: For purchases/sales if the date is not mentioned or mentioned as today, use the current date: 
+    """ + today.isoformat()
+        
     # Format the prompt with the user input
     prompt = MAIN_PROMPT.format(user_input=user_input)
 
