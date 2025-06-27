@@ -149,7 +149,10 @@ def send_to_llm(user_input):
 
         # Parse the LLM output into a structured JSON format
         try:
-            structured_response = json.loads(llm_output)
+            start = llm_output.find('[')
+            end = llm_output.find(']')
+            content_inside_brackets = llm_output[start: end + 1]
+            structured_response = json.loads(content_inside_brackets  )
 
             # Check if the response contains an error (e.g., ambiguity handling)
             if isinstance(structured_response, dict) and "error" in structured_response:
@@ -214,7 +217,7 @@ def execute_api_request(api_action, payload):
     Executes the API request based on the provided action and payload.
     """
     method, endpoint = api_action.split(" ", 1)  # Split into HTTP method and endpoint
-    base_url = "http://127.0.0.1:8000/api/"  # Replace with your actual API base URL
+    base_url = "http://127.0.0.1:8000"  
 
     try:
         if method == "GET":
