@@ -67,21 +67,50 @@ if st.session_state.pending_tasks and st.session_state.current_task_index is not
     with st.chat_message("assistant"):
         st.markdown(task["confirmation_message"])
         
-        col1, col2 = st.columns(2)
-        if col1.button("✅ Yes", key="confirm_task"):
+        # Show task navigation and count
+        task_count = len(st.session_state.pending_tasks)
+        current_task_num = st.session_state.current_task_index + 1
+        st.caption(f"Task {current_task_num} of {task_count}")
+        
+        # Navigation buttons
+        nav_col1, nav_col2, nav_col3, nav_col4 = st.columns(4)
+        
+        if nav_col1.button("⏮️ First", key="first_task"):
+            st.session_state.current_task_index = 0
+            st.rerun()
+            
+        if nav_col2.button("⏪ Previous", key="prev_task") and st.session_state.current_task_index > 0:
+            st.session_state.current_task_index -= 1
+            st.rerun()
+            
+        if nav_col3.button("⏩ Next", key="next_task") and st.session_state.current_task_index < len(st.session_state.pending_tasks) - 1:
+            st.session_state.current_task_index += 1
+            st.rerun()
+            
+        if nav_col4.button("⏭️ Last", key="last_task"):
+            st.session_state.current_task_index = len(st.session_state.pending_tasks) - 1
+            st.rerun()
+        
+        # Confirmation buttons - now with 4 columns for Cancel This
+        col1, col2, col3, col4 = st.columns(4)
+        
+        if col1.button("✅ Confirm This", key="confirm_task"):
             try:
                 # Execute just the current task
                 confirm_and_execute_tasks([task])
                 st.session_state.messages.append({
                     "role": "assistant", 
-                    "content": f"Action completed: {task['confirmation_message'][16:].split('.')[0]}"
+                    "content": f"✅ Action completed: {task['confirmation_message'][16:].split('.')[0]}"
                 })
                 
-                # Move to next task or clear if done
-                if st.session_state.current_task_index + 1 < len(st.session_state.pending_tasks):
-                    st.session_state.current_task_index += 1
+                # Remove the completed task
+                st.session_state.pending_tasks.pop(st.session_state.current_task_index)
+                
+                # Adjust index or clear if no more tasks
+                if st.session_state.pending_tasks:
+                    if st.session_state.current_task_index >= len(st.session_state.pending_tasks):
+                        st.session_state.current_task_index = len(st.session_state.pending_tasks) - 1
                 else:
-                    st.session_state.pending_tasks = []
                     st.session_state.current_task_index = None
                 st.rerun()
             except Exception as e:
@@ -93,17 +122,48 @@ if st.session_state.pending_tasks and st.session_state.current_task_index is not
                 st.session_state.current_task_index = None
                 st.rerun()
         
-        if col2.button("❌ No", key="cancel_task"):
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": f"Action cancelled: {task['confirmation_message'][16:].split('.')[0]}"
-            })
-            # Move to next task or clear if done
-            if st.session_state.current_task_index + 1 < len(st.session_state.pending_tasks):
-                st.session_state.current_task_index += 1
-            else:
+        if col2.button("✅ Confirm All", key="confirm_all"):
+            try:
+                # Execute all pending tasks
+                confirm_and_execute_tasks(st.session_state.pending_tasks)
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": f"✅ Completed {len(st.session_state.pending_tasks)} actions"
+                })
                 st.session_state.pending_tasks = []
                 st.session_state.current_task_index = None
+                st.rerun()
+            except Exception as e:
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": f"Error executing actions: {str(e)}"
+                })
+                st.session_state.pending_tasks = []
+                st.session_state.current_task_index = None
+                st.rerun()
+        
+        if col3.button("❌ Cancel This", key="cancel_this"):
+            cancelled_task = st.session_state.pending_tasks.pop(st.session_state.current_task_index)
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": f"❌ Action cancelled: {cancelled_task['confirmation_message'][16:].split('.')[0]}"
+            })
+            
+            # Adjust index or clear if no more tasks
+            if st.session_state.pending_tasks:
+                if st.session_state.current_task_index >= len(st.session_state.pending_tasks):
+                    st.session_state.current_task_index = len(st.session_state.pending_tasks) - 1
+            else:
+                st.session_state.current_task_index = None
+            st.rerun()
+        
+        if col4.button("❌ Cancel All", key="cancel_all"):
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": f"❌ Cancelled {len(st.session_state.pending_tasks)} pending actions"
+            })
+            st.session_state.pending_tasks = []
+            st.session_state.current_task_index = None
             st.rerun()
 
 # Chat interface
