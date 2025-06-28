@@ -15,7 +15,6 @@ st.sidebar.page_link("pages/AI_Assistant.py", label="🤖 AI Assistant")
 st.title("🤖 AI Assistant")
 st.markdown("### Control your inventory with natural language")
 
-
 # Initialize chat history and task state in session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -71,13 +70,19 @@ if st.session_state.pending_tasks and st.session_state.current_task_index is not
         col1, col2 = st.columns(2)
         if col1.button("✅ Yes", key="confirm_task"):
             try:
+                # Execute just the current task
                 confirm_and_execute_tasks([task])
                 st.session_state.messages.append({
                     "role": "assistant", 
                     "content": f"Action completed: {task['confirmation_message'][16:].split('.')[0]}"
                 })
-                st.session_state.pending_tasks = []
-                st.session_state.current_task_index = None
+                
+                # Move to next task or clear if done
+                if st.session_state.current_task_index + 1 < len(st.session_state.pending_tasks):
+                    st.session_state.current_task_index += 1
+                else:
+                    st.session_state.pending_tasks = []
+                    st.session_state.current_task_index = None
                 st.rerun()
             except Exception as e:
                 st.session_state.messages.append({
@@ -93,15 +98,18 @@ if st.session_state.pending_tasks and st.session_state.current_task_index is not
                 "role": "assistant", 
                 "content": f"Action cancelled: {task['confirmation_message'][16:].split('.')[0]}"
             })
-            st.session_state.pending_tasks = []
-            st.session_state.current_task_index = None
+            # Move to next task or clear if done
+            if st.session_state.current_task_index + 1 < len(st.session_state.pending_tasks):
+                st.session_state.current_task_index += 1
+            else:
+                st.session_state.pending_tasks = []
+                st.session_state.current_task_index = None
             st.rerun()
 
 # Chat interface
 user_input = st.chat_input("Ask about stock, add notes, or get insights...")
 
 if user_input:
-
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": user_input})
     
@@ -123,18 +131,14 @@ if user_input:
         tasks = process_user_input(input_with_data)
         
         if tasks:
-            # Check if any tasks require confirmation
+            # Separate confirmation tasks from non-confirmation tasks
             confirmation_tasks = [task for task in tasks if task.get("confirmation_message")]
+            non_confirmation_tasks = [task for task in tasks if not task.get("confirmation_message")]
             
-            if confirmation_tasks:
-                # Store the first task that needs confirmation
-                st.session_state.pending_tasks = confirmation_tasks
-                st.session_state.current_task_index = 0
-                st.rerun()
-            else:
-                # Handle non-confirmation tasks (like search results)
+            # Handle non-confirmation tasks first (like search results)
+            if non_confirmation_tasks:
                 with st.chat_message("assistant"):
-                    for task in tasks:
+                    for task in non_confirmation_tasks:
                         response = task.get("api_action")
                         response_content = requests.get("http://127.0.0.1:8000/"+response.split(" ")[1])
                         data = response_content.json()
@@ -160,6 +164,13 @@ if user_input:
                                 "role": "assistant", 
                                 "content": "No data found"
                             })
+            
+            # Handle confirmation tasks if any
+            if confirmation_tasks:
+                st.session_state.pending_tasks = confirmation_tasks
+                st.session_state.current_task_index = 0
+                st.rerun()
+            else:
                 st.rerun()
         else:
             # Handle cases where no tasks were generated
