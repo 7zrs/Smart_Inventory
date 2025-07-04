@@ -9,8 +9,6 @@ from .serializers import PurchaseSerializer, SaleSerializer
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    # permission_classes = [IsAuthenticatedOrReadOnly]  # Optional: Add authentication later
-    permission_classes = [IsAuthenticated]  # for now
 
 class PurchaseViewSet(viewsets.ModelViewSet):
     queryset = Purchase.objects.all()
