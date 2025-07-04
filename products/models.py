@@ -1,8 +1,9 @@
 from django.db import models
+from django.db.models import Sum
 from django.core.exceptions import ValidationError
 
 class Product(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, db_index=True, unique=True)  # Ensure unique product names
     unit = models.CharField(max_length=50)  # Unit of measurement (e.g., pieces, kilograms)
     notes = models.TextField(blank=True, null=True)  # Editable notes about the product
 
@@ -20,14 +21,16 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.unit})"
-    
+
 class Purchase(models.Model):
-    date = models.DateField()
-    id = models.AutoField(primary_key=True)  # Auto-generated ID
+    date = models.DateField(db_index=True)  # Add index for filtering by date
     supplier = models.CharField(max_length=255, blank=True, null=True)
     product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='purchases')
     amount = models.PositiveIntegerField()
     notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('product', 'date', 'supplier')  # Prevent duplicate purchases
 
     def clean(self):
         """
@@ -46,14 +49,17 @@ class Purchase(models.Model):
 
     def __str__(self):
         return f"Purchase of {self.product.name} on {self.date}"
-    
+
+
 class Sale(models.Model):
-    date = models.DateField()
-    id = models.AutoField(primary_key=True)  # Auto-generated ID
+    date = models.DateField(db_index=True)  # Add index for filtering by date
     customer = models.CharField(max_length=255, blank=True, null=True)
     product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='sales')
     amount = models.PositiveIntegerField()
     notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('product', 'date', 'customer')  # Prevent duplicate sales
 
     def clean(self):
         """
@@ -64,10 +70,10 @@ class Sale(models.Model):
             raise ValidationError("Sale amount must be greater than zero.")
 
         # Ensure the sale amount does not exceed the product's stock level
-        if self.product.stock_level() < self.amount:
+        if self.product.stock_level < self.amount:
             raise ValidationError(
                 f"Cannot sell {self.amount} {self.product.unit}. "
-                f"Only {self.product.stock_level()} {self.product.unit} available."
+                f"Only {self.product.stock_level} {self.product.unit} available."
             )
 
     def save(self, *args, **kwargs):

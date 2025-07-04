@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework',
     'products',
-    'inventory',
     'llm_utilities',
 ]
 

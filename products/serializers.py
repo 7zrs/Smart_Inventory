@@ -1,10 +1,14 @@
 from rest_framework import serializers
-from .models import Product, Sale, Purchase
+from .models import Product, Purchase, Sale
 
 class ProductSerializer(serializers.ModelSerializer):
-    purchased_amount = serializers.SerializerMethodField()
-    sold_amount = serializers.SerializerMethodField()
-    stock_level = serializers.SerializerMethodField()
+    """
+    Serializer for the Product model.
+    Includes calculated fields `purchased_amount`, `sold_amount`, and `stock_level`.
+    """
+    purchased_amount = serializers.IntegerField(read_only=True)
+    sold_amount = serializers.IntegerField(read_only=True)
+    stock_level = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Product
@@ -12,43 +16,52 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Check for duplicate products based on name and unit.
+        Custom validation to ensure unique product names and units.
         """
         name = data.get('name')
         unit = data.get('unit')
 
+        # Check for duplicate products based on name and unit
         if Product.objects.filter(name=name, unit=unit).exists():
             raise serializers.ValidationError("A product with this name and unit already exists.")
         return data
-    
-    def get_purchased_amount(self, obj):
-        return obj.purchased_amount()
 
-    def get_sold_amount(self, obj):
-        return obj.sold_amount()
-
-    def get_stock_level(self, obj):
-        return obj.stock_level()
-    
 class PurchaseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Purchase model.
+    """
     class Meta:
         model = Purchase
         fields = ['id', 'date', 'supplier', 'product', 'amount', 'notes']
 
+    def validate(self, data):
+        """
+        Custom validation to ensure purchase amount is greater than zero.
+        """
+        amount = data.get('amount')
+        if amount <= 0:
+            raise serializers.ValidationError("Purchase amount must be greater than zero.")
+        return data
+
 class SaleSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Sale model.
+    """
     class Meta:
         model = Sale
         fields = ['id', 'date', 'customer', 'product', 'amount', 'notes']
-        
+
     def validate(self, data):
         """
-        Ensure the sale amount does not exceed the product's stock level.
+        Custom validation to ensure sale amount does not exceed stock level.
         """
         product = data.get('product')
         amount = data.get('amount')
 
-        if product.stock_level() < amount:
+        # Calculate stock level using the annotated field if available
+        stock_level = getattr(product, 'stock_level', product.stock_level())
+        if amount > stock_level:
             raise serializers.ValidationError(
-                f"Cannot sell {amount} {product.unit}. Only {product.stock_level()} {product.unit} available."
+                f"Cannot sell {amount} {product.unit}. Only {stock_level} {product.unit} available."
             )
         return data
