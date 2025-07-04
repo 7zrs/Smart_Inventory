@@ -8,7 +8,7 @@ from django.utils.autoreload import run_with_reloader
 
 def start_streamlit():
     """Start the Streamlit app in a separate subprocess."""
-    streamlit_script = "Pages/login.py"  
+    streamlit_script = "Streamlit_app.py"  
     try:
         print("Starting Streamlit server...")
         subprocess.Popen(
