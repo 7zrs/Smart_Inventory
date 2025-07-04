@@ -3,6 +3,12 @@ import pandas as pd
 import requests
 from datetime import datetime
 
+# Check if user is authenticated 
+if 'auth' not in st.session_state or not st.session_state.auth.get('authenticated', False):
+    # Redirect to login page
+    st.switch_page("pages/login.py")  
+    st.stop()  # Stop execution of the rest of the page
+    
 BASE_URL = "http://127.0.0.1:8000/api/purchases/"
 PRODUCTS_URL = "http://127.0.0.1:8000/api/products/"
 

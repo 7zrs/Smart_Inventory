@@ -3,6 +3,12 @@ import requests
 import json
 from llm_utilities.utils import process_user_input, confirm_and_execute_tasks
 
+# Check if user is authenticated 
+if 'auth' not in st.session_state or not st.session_state.auth.get('authenticated', False):
+    # Redirect to login page
+    st.switch_page("pages/login.py")  
+    st.stop()  # Stop execution of the rest of the page
+    
 # Sidebar navigation
 st.sidebar.title("🏢 Smart Inventory")
 st.sidebar.divider()
