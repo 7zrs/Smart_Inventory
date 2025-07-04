@@ -2,13 +2,14 @@ import streamlit as st
 import pandas as pd
 import requests
 from datetime import datetime
+from Pages.login import handle_logout
 
 # Check if user is authenticated 
 if 'auth' not in st.session_state or not st.session_state.auth.get('authenticated', False):
     # Redirect to login page
     st.switch_page("pages/login.py")  
     st.stop()  # Stop execution of the rest of the page
-    
+
 BASE_URL = "http://127.0.0.1:8000/api/purchases/"
 PRODUCTS_URL = "http://127.0.0.1:8000/api/products/"
 
@@ -19,6 +20,14 @@ st.sidebar.page_link("pages/Inventory.py", label="📦 Inventory")
 st.sidebar.page_link("pages/Purchases.py", label="🛒 Purchases")
 st.sidebar.page_link("pages/Sales.py", label="💰 Sales")
 st.sidebar.page_link("pages/AI_Assistant.py", label="🤖 AI Assistant")
+st.sidebar.divider()
+if st.sidebar.button("🚪 Logout"):
+    handle_logout()
+    st.switch_page("pages/login.py")
+# Admin-only 
+if st.session_state.auth.get('is_admin', False):
+    if st.sidebar.button("↩️ Admin Dashboard"):
+        st.switch_page("pages/login.py")
 
 # Initialize session state
 if 'show_add_success' not in st.session_state:
