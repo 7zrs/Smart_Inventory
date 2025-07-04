@@ -9,10 +9,10 @@ PRODUCTS_URL = "http://127.0.0.1:8000/api/products/"
 st.sidebar.title("🏢 Smart Inventory")
 st.sidebar.divider()
 st.sidebar.page_link("streamlit_app.py", label="🏠 Home")
-st.sidebar.page_link("pages/1_Inventory.py", label="📦 Inventory")
-st.sidebar.page_link("pages/2_Purchases.py", label="🛒 Purchases")
-st.sidebar.page_link("pages/3_Sales.py", label="💰 Sales")
-st.sidebar.page_link("pages/4_AI_Assistant.py", label="🤖 AI Assistant")
+st.sidebar.page_link("pages/Inventory.py", label="📦 Inventory")
+st.sidebar.page_link("pages/Purchases.py", label="🛒 Purchases")
+st.sidebar.page_link("pages/Sales.py", label="💰 Sales")
+st.sidebar.page_link("pages/AI_Assistant.py", label="🤖 AI Assistant")
 
 # Initialize session state
 if 'show_add_success' not in st.session_state:

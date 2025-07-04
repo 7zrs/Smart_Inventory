@@ -3,6 +3,9 @@ from django.core.exceptions import ValidationError
 import google.generativeai as genai
 from django.conf import settings
 import requests
+from datetime import date
+
+today = date.today()
 
 def send_to_llm(user_input):
     """
@@ -127,7 +130,10 @@ def send_to_llm(user_input):
         ```
 
     Return the interpreted intent, the corresponding API action, and any necessary details for execution.
-    """
+    Note: Don't send a task to update calculated fields
+    Note: For purchases/sales if the date is not mentioned or mentioned as today, use the current date: 
+    """ + today.isoformat()
+        
     # Format the prompt with the user input
     prompt = MAIN_PROMPT.format(user_input=user_input)
 
@@ -149,7 +155,10 @@ def send_to_llm(user_input):
 
         # Parse the LLM output into a structured JSON format
         try:
-            structured_response = json.loads(llm_output)
+            start = llm_output.find('[')
+            end = llm_output.find(']')
+            content_inside_brackets = llm_output[start: end + 1]
+            structured_response = json.loads(content_inside_brackets  )
 
             # Check if the response contains an error (e.g., ambiguity handling)
             if isinstance(structured_response, dict) and "error" in structured_response:
@@ -199,40 +208,11 @@ def parse_and_store_tasks(llm_response):
 
 def confirm_and_execute_tasks(tasks):
     """
-    Confirms tasks with the user, displays changes for updates/deletes, and executes them if confirmed.
+    Executes the API requests for the given tasks.
     """
     for task in tasks:
-        intent = task["intent"]
         api_action = task["api_action"]
         payload = task["payload"]
-        confirmation_message = task.get("confirmation_message")
-
-        # If the task modifies data, ask for confirmation
-        if confirmation_message:
-            # For update or delete, fetch current data to show changes
-            if intent in ["update", "delete"]:
-                product_id = payload.get("id")  # Assuming 'id' is part of the payload for updates/deletes
-                if not product_id:
-                    raise ValueError("Missing 'id' for update or delete task.")
-
-                try:
-                    # Fetch the current product details
-                    response = requests.get(f"http://127.0.0.1:8000/api/products/{product_id}/")
-                    if response.status_code != 200:
-                        raise Exception(f"Failed to fetch product details: {response.text}")
-
-                    product_data = response.json()
-                    print(f"Current Product Details: {product_data}")
-                except Exception as e:
-                    raise Exception(f"Error fetching product details: {str(e)}")
-
-            # Display the confirmation message
-            print(confirmation_message)
-            user_response = input("Do you want to proceed? (yes/no): ").strip().lower()
-
-            if user_response != "yes":
-                print("Task canceled.")
-                continue  # Skip to the next task
 
         # Execute the API request
         execute_api_request(api_action, payload)
@@ -243,7 +223,7 @@ def execute_api_request(api_action, payload):
     Executes the API request based on the provided action and payload.
     """
     method, endpoint = api_action.split(" ", 1)  # Split into HTTP method and endpoint
-    base_url = "http://127.0.0.1:8000/api/"  # Replace with your actual API base URL
+    base_url = "http://127.0.0.1:8000"  
 
     try:
         if method == "GET":
@@ -266,26 +246,29 @@ def execute_api_request(api_action, payload):
 def process_user_input(user_input):
     """
     Processes the user input by sending it to the LLM, parsing tasks,
-    confirming actions, and executing them.
+    and returning the tasks for confirmation.
     """
     try:
-        # Step 1: Send the user input to the LLM
+        #Send the user input to the LLM
         llm_response = send_to_llm(user_input)
 
-        # Step 2: Parse and store the tasks from the LLM response
+        # Parse and store the tasks from the LLM response
         tasks = parse_and_store_tasks(llm_response)
 
-        # Step 3: Confirm and execute the tasks
-        confirm_and_execute_tasks(tasks)
+        # Return the parsed tasks for confirmation in the frontend
+        return tasks
 
     except ValidationError as e:
         # Handle validation errors (e.g., ambiguous input or invalid JSON)
         print(f"Validation Error: {str(e)}")
+        return []
 
     except ValueError as e:
         # Handle value errors (e.g., missing required fields in tasks)
         print(f"Value Error: {str(e)}")
+        return []
 
     except Exception as e:
         # Handle unexpected errors
         print(f"An unexpected error occurred: {str(e)}")
+        return []
