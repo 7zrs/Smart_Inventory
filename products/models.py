@@ -70,7 +70,7 @@ class Sale(models.Model):
             raise ValidationError("Sale amount must be greater than zero.")
 
         # Ensure the sale amount does not exceed the product's stock level
-        if self.product.stock_level < self.amount:
+        if self.product.stock_level() < self.amount:
             raise ValidationError(
                 f"Cannot sell {self.amount} {self.product.unit}. "
                 f"Only {self.product.stock_level} {self.product.unit} available."
