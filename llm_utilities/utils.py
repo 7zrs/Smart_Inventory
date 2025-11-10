@@ -141,7 +141,7 @@ def send_to_llm(user_input):
     genai.configure(api_key=settings.GEMINAI_API_KEY)
 
     # Load the correct Gemini model
-    model = genai.GenerativeModel('models/gemini-2.0-flash')
+    model = genai.GenerativeModel('models/gemini-2.5-flash')
 
     try:
         # Generate a response from the LLM
