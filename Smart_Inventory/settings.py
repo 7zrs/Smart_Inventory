@@ -71,9 +71,9 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_REDIRECT_EXEMPT = []
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = False  # Disabled for development
+    SESSION_COOKIE_SECURE = False  # Disabled for development
+    CSRF_COOKIE_SECURE = False  # Disabled for development
     X_FRAME_OPTIONS = "DENY"
 
 ROOT_URLCONF = "Smart_Inventory.urls"
