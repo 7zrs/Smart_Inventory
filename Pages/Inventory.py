@@ -3,11 +3,10 @@ import pandas as pd
 import requests
 from Pages.login import handle_logout
 
-# Check if user is authenticated 
+# Check if user is authenticated
 if 'auth' not in st.session_state or not st.session_state.auth.get('authenticated', False):
-    # Redirect to login page
-    st.switch_page("pages/login.py")  
-    st.stop()  # Stop execution of the rest of the page
+    st.switch_page("pages/login.py")
+    st.stop()
 
 BASE_URL = "http://127.0.0.1:8000/api/products/"
 
@@ -22,7 +21,6 @@ st.sidebar.divider()
 if st.sidebar.button("🚪 Logout"):
     handle_logout()
     st.switch_page("pages/login.py")
-# Admin-only 
 if st.session_state.auth.get('is_admin', False):
     if st.sidebar.button("↩️ Admin Dashboard"):
         st.switch_page("pages/login.py")
@@ -30,18 +28,16 @@ if st.session_state.auth.get('is_admin', False):
 # Initialize session state
 if 'show_add_success' not in st.session_state:
     st.session_state.show_add_success = False
-if 'show_add_form' not in st.session_state:
-    st.session_state.show_add_form = False
-if 'show_edit_form' not in st.session_state:
-    st.session_state.show_edit_form = False
-if 'show_delete_confirm' not in st.session_state:
-    st.session_state.show_delete_confirm = False
-if 'selected_product_id' not in st.session_state:
-    st.session_state.selected_product_id = None
 if 'show_update_success' not in st.session_state:
     st.session_state.show_update_success = False
 if 'show_delete_success' not in st.session_state:
     st.session_state.show_delete_success = False
+if 'selected_product_id' not in st.session_state:
+    st.session_state.selected_product_id = None
+if 'show_edit_dialog' not in st.session_state:
+    st.session_state.show_edit_dialog = False
+if 'show_delete_dialog' not in st.session_state:
+    st.session_state.show_delete_dialog = False
 
 def fetch_products():
     try:
@@ -58,12 +54,10 @@ def create_product(product_data):
     try:
         response = requests.post(BASE_URL, json=product_data)
         if response.status_code == 201:
-            return True
-        st.error(f"Failed to create product: {response.status_code} - {response.text}")
-        return False
+            return True, None
+        return False, f"Failed to create product: {response.status_code} - {response.text}"
     except Exception as e:
-        st.error(f"API connection failed: {e}")
-        return False
+        return False, f"API connection failed: {e}"
 
 def update_product(product_id, product_data):
     try:
@@ -75,32 +69,128 @@ def update_product(product_id, product_data):
             'sold_amount': int(product_data['sold_amount']),
             'stock_level': int(product_data['stock_level'])
         }
-        
         response = requests.put(f"{BASE_URL}{product_id}/", json=converted_data)
         if response.status_code == 200:
-            return True
-        st.error(f"Failed to update product: {response.status_code} - {response.text}")
-        return False
+            return True, None
+        return False, f"Failed to update product: {response.status_code} - {response.text}"
     except Exception as e:
-        st.error(f"API connection failed: {e}")
-        return False
+        return False, f"API connection failed: {e}"
 
 def delete_product(product_id):
     try:
         response = requests.delete(f"{BASE_URL}{product_id}/")
         if response.status_code == 204:
-            return True
-        st.error(f"Failed to delete product: {response.status_code} - {response.text}")
-        return False
+            return True, None
+        return False, f"Failed to delete product: {response.status_code} - {response.text}"
     except Exception as e:
-        st.error(f"API connection failed: {e}")
-        return False
+        return False, f"API connection failed: {e}"
 
-def product_name_exists(name):
+def product_name_exists(name, exclude_id=None):
     """Check if a product name already exists (case-insensitive)"""
     if 'product_names' in st.session_state:
-        return name.lower() in [n.lower() for n in st.session_state.product_names.keys()]
+        for n, pid in st.session_state.product_names.items():
+            if n.lower() == name.lower() and pid != exclude_id:
+                return True
     return False
+
+
+# Dialog for adding new product
+@st.dialog("Add New Product")
+def add_product_dialog():
+    name = st.text_input("Product Name*", placeholder="Enter product name")
+    unit = st.text_input("Unit*", placeholder="e.g., kg, liter, box")
+    notes = st.text_area("Notes", placeholder="Optional notes about the product")
+
+    col1, col2 = st.columns(2)
+    if col1.button("✅ Save Product", use_container_width=True):
+        if name and unit:
+            if product_name_exists(name):
+                st.error("Product name already exists!")
+            else:
+                new_product = {
+                    'name': name,
+                    'unit': unit,
+                    'notes': notes,
+                    'purchased_amount': 0,
+                    'sold_amount': 0,
+                    'stock_level': 0
+                }
+                success, error = create_product(new_product)
+                if success:
+                    st.session_state.show_add_success = True
+                    st.rerun()
+                else:
+                    st.error(error)
+        else:
+            st.warning("Please fill in all required fields (marked with *)")
+
+    if col2.button("❌ Cancel", use_container_width=True):
+        st.rerun()
+
+
+# Dialog for editing product
+@st.dialog("Edit Product")
+def edit_product_dialog(product_data, product_id):
+    edit_name = st.text_input("Product Name*", value=product_data['Product'])
+    edit_unit = st.text_input("Unit*", value=product_data['Unit'])
+    edit_notes = st.text_area("Notes", value=product_data['Notes'] if product_data['Notes'] else "")
+
+    if edit_name != product_data['Product'] and product_name_exists(edit_name, product_id):
+        st.error("A product with this name already exists!")
+
+    col1, col2 = st.columns(2)
+    if col1.button("💾 Save Changes", use_container_width=True):
+        if edit_name and edit_unit:
+            if edit_name != product_data['Product'] and product_name_exists(edit_name, product_id):
+                st.error("A product with this name already exists!")
+            else:
+                updated_product = {
+                    'name': edit_name,
+                    'unit': edit_unit,
+                    'notes': edit_notes,
+                    'purchased_amount': int(product_data['Purchased Amt']),
+                    'sold_amount': int(product_data['Sold Amt']),
+                    'stock_level': int(product_data['Stock Level']),
+                }
+                success, error = update_product(product_id, updated_product)
+                if success:
+                    st.session_state.show_update_success = True
+                    st.session_state.show_edit_dialog = False
+                    st.session_state.selected_product_id = None
+                    st.rerun()
+                else:
+                    st.error(error)
+        else:
+            st.warning("Please fill in all required fields (marked with *)")
+
+    if col2.button("❌ Cancel", use_container_width=True):
+        st.session_state.show_edit_dialog = False
+        st.session_state.selected_product_id = None
+        st.rerun()
+
+
+# Dialog for delete confirmation
+@st.dialog("Confirm Delete")
+def delete_product_dialog(product_name, product_id):
+    st.warning(f"Are you sure you want to delete **'{product_name}'**?")
+    st.caption("This action cannot be undone.")
+
+    col1, col2 = st.columns(2)
+    if col1.button("🗑️ Yes, Delete", use_container_width=True, type="primary"):
+        success, error = delete_product(product_id)
+        if success:
+            st.session_state.show_delete_success = True
+            st.session_state.show_delete_dialog = False
+            st.session_state.selected_product_id = None
+            st.rerun()
+        else:
+            st.error(error)
+
+    if col2.button("❌ Cancel", use_container_width=True):
+        st.session_state.show_delete_dialog = False
+        st.session_state.selected_product_id = None
+        st.rerun()
+
 
 # Load and prepare data
 inventory_data = fetch_products()
@@ -168,60 +258,22 @@ st.divider()
 st.write("#### ➕✏️🗑️ Actions:")
 st.write("")
 
-col_a, col_b = st.columns([2,5])
+col_a, col_b = st.columns([2, 5])
 
-# Add Product Form
+# Add Product Button
 with col_a:
     if st.button("➕ Add New Product"):
-        st.session_state.show_add_form = True
-        st.session_state.show_edit_form = False
-        st.session_state.show_delete_confirm = False
-        st.rerun()
-
-if st.session_state.show_add_form:
-    with st.form("add_product_form"):
-        st.subheader("Add New Product Details")
-        name = st.text_input("Product Name*", placeholder="Enter product name", key="new_product_name")
-        unit = st.text_input("Unit*", placeholder="e.g., kg, liter, box")
-        notes = st.text_area("Notes", placeholder="Optional notes about the product")
-
-        col1, col2 = st.columns(2)
-        submitted = col1.form_submit_button("✅ Save Product")
-        cancel = col2.form_submit_button("❌ Cancel")
-
-        if submitted:
-            if name and unit:
-                if product_name_exists(name):
-                    st.error("Cannot save: Product name already exists")
-                else:
-                    new_product = {
-                        'name': name,
-                        'unit': unit,
-                        'notes': notes,
-                        'purchased_amount': 0,
-                        'sold_amount': 0,
-                        'stock_level': 0
-                    }
-
-                    if create_product(new_product):
-                        st.session_state.show_add_success = True
-                        st.session_state.show_add_form = False
-                        st.rerun()
-            else:
-                st.warning("Please fill in all required fields (marked with *)")
-
-        if cancel:
-            st.session_state.show_add_form = False
-            st.rerun()
+        add_product_dialog()
 
 # Edit/Delete Product Section
 with col_b:
-    if not df.empty:    
+    if not df.empty:
         product_names_list = ["Select a product to edit or delete"] + list(st.session_state.product_names.keys())
         selected_product_name = st.selectbox(
             "hidden",
             options=product_names_list,
             key="product_selection",
+            label_visibility="collapsed"
         )
 
         selected_product_data = None
@@ -234,73 +286,19 @@ with col_b:
             st.write("")
             col_edit, col_delete = st.columns(2)
 
-            if col_edit.button(f"✏️ Edit '{selected_product_name}'"):
-                st.session_state.show_edit_form = True
-                st.session_state.show_delete_confirm = False
-                st.session_state.show_add_form = False
-                st.rerun()
+            with col_edit:
+                if st.button(f"✏️ Edit '{selected_product_name}'"):
+                    st.session_state.show_edit_dialog = True
 
-            if col_delete.button(f"🗑️ Delete '{selected_product_name}'"):
-                st.session_state.show_delete_confirm = True
-                st.session_state.show_edit_form = False
-                st.session_state.show_add_form = False
-                st.rerun()
+            with col_delete:
+                if st.button(f"🗑️ Delete '{selected_product_name}'"):
+                    st.session_state.show_delete_dialog = True
 
-    # Edit Product Form
-    if st.session_state.show_edit_form and selected_product_data is not None:
-        st.write("---")
-        with st.form("edit_product_form"):
-            st.subheader(f"Edit Product: {selected_product_data['Product']}")
-            edit_name = st.text_input("Product Name*", value=selected_product_data['Product'])
-            edit_unit = st.text_input("Unit*", value=selected_product_data['Unit'])
-            edit_notes = st.text_area("Notes", value=selected_product_data['Notes'])
+# Show dialogs based on state
+if st.session_state.show_edit_dialog and st.session_state.selected_product_id:
+    product_data = df[df['ID'] == st.session_state.selected_product_id].iloc[0]
+    edit_product_dialog(product_data, st.session_state.selected_product_id)
 
-            # Show warning if name is changed to an existing one
-            if (edit_name != selected_product_data['Product'] and 
-                product_name_exists(edit_name)):
-                st.error("A product with this name already exists. Please choose a different name.")
-
-            col_edit_submit, col_edit_cancel = st.columns(2)
-            edit_submitted = col_edit_submit.form_submit_button("💾 Save Changes")
-            edit_cancel = col_edit_cancel.form_submit_button("❌ Cancel Edit")
-
-            if edit_submitted:
-                if edit_name and edit_unit:
-                    if not (edit_name != selected_product_data['Product'] and 
-                        product_name_exists(edit_name)):
-                        updated_product = {
-                            'name': edit_name,
-                            'unit': edit_unit,
-                            'notes': edit_notes,
-                            'purchased_amount': int(selected_product_data['Purchased Amt']),
-                            'sold_amount': int(selected_product_data['Sold Amt']),
-                            'stock_level': int(selected_product_data['Stock Level']),
-                        }
-                        if update_product(st.session_state.selected_product_id, updated_product):
-                            st.session_state.show_update_success = True
-                            st.session_state.show_edit_form = False
-                            st.session_state.selected_product_id = None
-                            st.rerun()
-                else:
-                    st.warning("Please fill in all required fields (marked with *)")
-
-            if edit_cancel:
-                st.session_state.show_edit_form = False
-                st.session_state.selected_product_id = None
-                st.rerun()
-
-    # Delete Confirmation
-    if st.session_state.show_delete_confirm and selected_product_data is not None:
-        st.warning(f"Are you sure you want to delete **'{selected_product_data['Product']}'**? This action cannot be undone.")
-        col_del_confirm, col_del_cancel = st.columns(2)
-
-        if col_del_confirm.button("🗑️ Yes, Delete Product"):
-            if delete_product(st.session_state.selected_product_id):
-                st.session_state.show_delete_success = True
-                st.session_state.show_delete_confirm = False
-                st.session_state.selected_product_id = None
-                st.rerun()
-        if col_del_cancel.button("❌ Cancel Deletion"):
-            st.session_state.show_delete_confirm = False
-            st.session_state.selected_product_id = None
-            st.rerun()
+if st.session_state.show_delete_dialog and st.session_state.selected_product_id:
+    product_name = df[df['ID'] == st.session_state.selected_product_id].iloc[0]['Product']
+    delete_product_dialog(product_name, st.session_state.selected_product_id)
