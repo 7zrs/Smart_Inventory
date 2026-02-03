@@ -76,8 +76,9 @@ class SaleSerializer(serializers.ModelSerializer):
         product = data.get("product")
         amount = data.get("amount")
 
-        # Calculate stock level using the annotated field if available
-        stock_level = getattr(product, "stock_level", product.stock_level())
+        # Calculate stock level - stock_level is a method on Product model
+        stock_level_attr = getattr(product, "stock_level", None)
+        stock_level = stock_level_attr() if callable(stock_level_attr) else stock_level_attr
         if amount > stock_level:
             raise serializers.ValidationError(
                 f"Cannot sell {amount} {product.unit}. Only {stock_level} {product.unit} available."

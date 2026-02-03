@@ -23,13 +23,85 @@ class ProductFilter(filters.FilterSet):
     unit = filters.CharFilter(field_name="unit", lookup_expr="icontains")
     notes = filters.CharFilter(field_name="notes", lookup_expr="icontains")
 
-    # Filters for calculated fields (stock level related)
-    min_stock_level = filters.NumberFilter(field_name="stock_level", lookup_expr="gte")
-    max_stock_level = filters.NumberFilter(field_name="stock_level", lookup_expr="lte")
+    # Django-style lookup filters for stock_level
+    stock_level__lt = filters.NumberFilter(method="filter_stock_level_lookup")
+    stock_level__gt = filters.NumberFilter(method="filter_stock_level_lookup")
+    stock_level__lte = filters.NumberFilter(method="filter_stock_level_lookup")
+    stock_level__gte = filters.NumberFilter(method="filter_stock_level_lookup")
+    stock_level__exact = filters.NumberFilter(method="filter_stock_level_lookup")
+
+    # Keep backward compatibility filters
+    min_stock_level = filters.NumberFilter(method="filter_min_stock_level")
+    max_stock_level = filters.NumberFilter(method="filter_max_stock_level")
 
     class Meta:
         model = Product
-        fields = ["name", "unit", "notes", "min_stock_level", "max_stock_level"]
+        fields = [
+            "name",
+            "unit",
+            "notes",
+            "stock_level__lt",
+            "stock_level__gt",
+            "stock_level__lte",
+            "stock_level__gte",
+            "stock_level__exact",
+            "min_stock_level",
+            "max_stock_level",
+        ]
+
+    def filter_stock_level_lookup(self, queryset, name, value):
+        """
+        Filter products by stock_level using specific lookup expressions.
+        """
+        if value is not None:
+            # Extract lookup expression from name (e.g., "stock_level__lt" -> "lt")
+            lookup_expr = name.split("__")[-1]
+
+            # Annotate with calculated fields
+            queryset = queryset.annotate(
+                purchased_amount=Coalesce(
+                    Sum("purchases__amount", distinct=True), Value(0)
+                ),
+                sold_amount=Coalesce(Sum("sales__amount", distinct=True), Value(0)),
+            ).annotate(stock_level=F("purchased_amount") - F("sold_amount"))
+
+            # Apply filter with the extracted lookup
+            filter_kwargs = {f"stock_level__{lookup_expr}": value}
+            queryset = queryset.filter(**filter_kwargs)
+
+        return queryset
+
+    def filter_min_stock_level(self, queryset, name, value):
+        """
+        Filter products with stock level greater than or equal to the given value.
+        """
+        if value is not None:
+            # Annotate with calculated fields and filter
+            queryset = queryset.annotate(
+                purchased_amount=Coalesce(
+                    Sum("purchases__amount", distinct=True), Value(0)
+                ),
+                sold_amount=Coalesce(Sum("sales__amount", distinct=True), Value(0)),
+            ).annotate(stock_level=F("purchased_amount") - F("sold_amount"))
+
+            queryset = queryset.filter(stock_level__gte=value)
+        return queryset
+
+    def filter_max_stock_level(self, queryset, name, value):
+        """
+        Filter products with stock level less than or equal to the given value.
+        """
+        if value is not None:
+            # Annotate with calculated fields and filter
+            queryset = queryset.annotate(
+                purchased_amount=Coalesce(
+                    Sum("purchases__amount", distinct=True), Value(0)
+                ),
+                sold_amount=Coalesce(Sum("sales__amount", distinct=True), Value(0)),
+            ).annotate(stock_level=F("purchased_amount") - F("sold_amount"))
+
+            queryset = queryset.filter(stock_level__lte=value)
+        return queryset
 
     @property
     def qs(self):
@@ -48,7 +120,6 @@ class ProductFilter(filters.FilterSet):
             sold_amount=Coalesce(Sum("sales__amount", distinct=True), Value(0)),
         ).annotate(stock_level=F("purchased_amount") - F("sold_amount"))
 
-        # No need for manual filtering here; DjangoFilterBackend handles it.
         return annotated_qs
 
 
@@ -59,33 +130,109 @@ class PurchaseFilter(filters.FilterSet):
 
     date__gte = filters.DateFilter(field_name="date", lookup_expr="gte")
     date__lte = filters.DateFilter(field_name="date", lookup_expr="lte")
+    date__gt = filters.DateFilter(field_name="date", lookup_expr="gt")
+    date__lt = filters.DateFilter(field_name="date", lookup_expr="lt")
+    date__exact = filters.DateFilter(field_name="date", lookup_expr="exact")
     supplier = filters.CharFilter(field_name="supplier", lookup_expr="icontains")
+    supplier__icontains = filters.CharFilter(
+        field_name="supplier", lookup_expr="icontains"
+    )
+    supplier__exact = filters.CharFilter(field_name="supplier", lookup_expr="exact")
     product = filters.NumberFilter(field_name="product")
+    product__exact = filters.NumberFilter(field_name="product", lookup_expr="exact")
     amount__lt = filters.NumberFilter(field_name="amount", lookup_expr="lt")
     amount__gt = filters.NumberFilter(field_name="amount", lookup_expr="gt")
+    amount__lte = filters.NumberFilter(field_name="amount", lookup_expr="lte")
+    amount__gte = filters.NumberFilter(field_name="amount", lookup_expr="gte")
+    amount__exact = filters.NumberFilter(field_name="amount", lookup_expr="exact")
     amount__range = filters.NumericRangeFilter(field_name="amount")
+    notes = filters.CharFilter(field_name="notes", lookup_expr="icontains")
+    notes__icontains = filters.CharFilter(field_name="notes", lookup_expr="icontains")
+    notes__exact = filters.CharFilter(field_name="notes", lookup_expr="exact")
+    notes__contains = filters.CharFilter(field_name="notes", lookup_expr="contains")
 
     class Meta:
         model = Purchase
-        fields = ["date", "supplier", "product", "amount"]
+        fields = [
+            "date",
+            "date__gte",
+            "date__lte",
+            "date__gt",
+            "date__lt",
+            "date__exact",
+            "supplier",
+            "supplier__icontains",
+            "supplier__exact",
+            "product",
+            "product__exact",
+            "amount",
+            "amount__lt",
+            "amount__gt",
+            "amount__lte",
+            "amount__gte",
+            "amount__exact",
+            "amount__range",
+            "notes",
+            "notes__icontains",
+            "notes__exact",
+            "notes__contains",
+        ]
 
 
 class SaleFilter(filters.FilterSet):
     """
-    Custom filter for the Sale model.
+    Custom filter for Sale model.
     """
 
     date__gte = filters.DateFilter(field_name="date", lookup_expr="gte")
     date__lte = filters.DateFilter(field_name="date", lookup_expr="lte")
+    date__gt = filters.DateFilter(field_name="date", lookup_expr="gt")
+    date__lt = filters.DateFilter(field_name="date", lookup_expr="lt")
+    date__exact = filters.DateFilter(field_name="date", lookup_expr="exact")
     customer = filters.CharFilter(field_name="customer", lookup_expr="icontains")
+    customer__icontains = filters.CharFilter(
+        field_name="customer", lookup_expr="icontains"
+    )
+    customer__exact = filters.CharFilter(field_name="customer", lookup_expr="exact")
     product = filters.NumberFilter(field_name="product")
+    product__exact = filters.NumberFilter(field_name="product", lookup_expr="exact")
     amount__lt = filters.NumberFilter(field_name="amount", lookup_expr="lt")
     amount__gt = filters.NumberFilter(field_name="amount", lookup_expr="gt")
+    amount__lte = filters.NumberFilter(field_name="amount", lookup_expr="lte")
+    amount__gte = filters.NumberFilter(field_name="amount", lookup_expr="gte")
+    amount__exact = filters.NumberFilter(field_name="amount", lookup_expr="exact")
     amount__range = filters.NumericRangeFilter(field_name="amount")
+    notes = filters.CharFilter(field_name="notes", lookup_expr="icontains")
+    notes__icontains = filters.CharFilter(field_name="notes", lookup_expr="icontains")
+    notes__exact = filters.CharFilter(field_name="notes", lookup_expr="exact")
+    notes__contains = filters.CharFilter(field_name="notes", lookup_expr="contains")
 
     class Meta:
         model = Sale
-        fields = ["date", "customer", "product", "amount"]
+        fields = [
+            "date",
+            "date__gte",
+            "date__lte",
+            "date__gt",
+            "date__lt",
+            "date__exact",
+            "customer",
+            "customer__icontains",
+            "customer__exact",
+            "product",
+            "product__exact",
+            "amount",
+            "amount__lt",
+            "amount__gt",
+            "amount__lte",
+            "amount__gte",
+            "amount__exact",
+            "amount__range",
+            "notes",
+            "notes__icontains",
+            "notes__exact",
+            "notes__contains",
+        ]
 
 
 class ProductViewSet(viewsets.ModelViewSet):
