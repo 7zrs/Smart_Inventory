@@ -27,19 +27,19 @@ if st.session_state.auth.get('is_admin', False):
     if st.sidebar.button("↩️ Admin Dashboard"):
         st.switch_page("pages/login.py")
 
-# Initialize session state
-if 'show_add_success' not in st.session_state:
-    st.session_state.show_add_success = False
-if 'show_update_success' not in st.session_state:
-    st.session_state.show_update_success = False
-if 'show_delete_success' not in st.session_state:
-    st.session_state.show_delete_success = False
-if 'selected_purchase_id' not in st.session_state:
-    st.session_state.selected_purchase_id = None
-if 'show_edit_dialog' not in st.session_state:
-    st.session_state.show_edit_dialog = False
-if 'show_delete_dialog' not in st.session_state:
-    st.session_state.show_delete_dialog = False
+# Initialize session state (page-specific keys to avoid conflicts)
+if 'purch_show_add_success' not in st.session_state:
+    st.session_state.purch_show_add_success = False
+if 'purch_show_update_success' not in st.session_state:
+    st.session_state.purch_show_update_success = False
+if 'purch_show_delete_success' not in st.session_state:
+    st.session_state.purch_show_delete_success = False
+if 'purch_selected_id' not in st.session_state:
+    st.session_state.purch_selected_id = None
+if 'purch_show_edit_dialog' not in st.session_state:
+    st.session_state.purch_show_edit_dialog = False
+if 'purch_show_delete_dialog' not in st.session_state:
+    st.session_state.purch_show_delete_dialog = False
 if 'products' not in st.session_state:
     st.session_state.products = {}
 
@@ -132,7 +132,7 @@ def add_purchase_dialog():
             }
             success, error = create_purchase(new_purchase)
             if success:
-                st.session_state.show_add_success = True
+                st.session_state.purch_show_add_success = True
                 st.rerun()
             else:
                 st.error(error)
@@ -183,16 +183,16 @@ def edit_purchase_dialog(purchase_data, purchase_id):
         }
         success, error = update_purchase(purchase_id, updated_purchase)
         if success:
-            st.session_state.show_update_success = True
-            st.session_state.show_edit_dialog = False
-            st.session_state.selected_purchase_id = None
+            st.session_state.purch_show_update_success = True
+            st.session_state.purch_show_edit_dialog = False
+            st.session_state.purch_selected_id = None
             st.rerun()
         else:
             st.error(error)
 
     if col2.button("❌ Cancel", use_container_width=True):
-        st.session_state.show_edit_dialog = False
-        st.session_state.selected_purchase_id = None
+        st.session_state.purch_show_edit_dialog = False
+        st.session_state.purch_selected_id = None
         st.rerun()
 
 
@@ -206,16 +206,16 @@ def delete_purchase_dialog(purchase_data, purchase_id):
     if col1.button("🗑️ Yes, Delete", use_container_width=True, type="primary"):
         success, error = delete_purchase(purchase_id)
         if success:
-            st.session_state.show_delete_success = True
-            st.session_state.show_delete_dialog = False
-            st.session_state.selected_purchase_id = None
+            st.session_state.purch_show_delete_success = True
+            st.session_state.purch_show_delete_dialog = False
+            st.session_state.purch_selected_id = None
             st.rerun()
         else:
             st.error(error)
 
     if col2.button("❌ Cancel", use_container_width=True):
-        st.session_state.show_delete_dialog = False
-        st.session_state.selected_purchase_id = None
+        st.session_state.purch_show_delete_dialog = False
+        st.session_state.purch_selected_id = None
         st.rerun()
 
 
@@ -273,17 +273,17 @@ st.dataframe(
 )
 
 # Success Messages
-if st.session_state.show_add_success:
+if st.session_state.purch_show_add_success:
     st.success("Purchase Added Successfully!")
-    st.session_state.show_add_success = False
+    st.session_state.purch_show_add_success = False
 
-if st.session_state.show_update_success:
+if st.session_state.purch_show_update_success:
     st.success("Purchase Updated Successfully!")
-    st.session_state.show_update_success = False
+    st.session_state.purch_show_update_success = False
 
-if st.session_state.show_delete_success:
+if st.session_state.purch_show_delete_success:
     st.success("Purchase Deleted Successfully!")
-    st.session_state.show_delete_success = False
+    st.session_state.purch_show_delete_success = False
 
 # Action Section
 st.divider()
@@ -329,7 +329,7 @@ with col_b:
 
             if not matching_purchases.empty:
                 selected_purchase_data = matching_purchases.iloc[0]
-                st.session_state.selected_purchase_id = selected_purchase_data['ID']
+                st.session_state.purch_selected_id = selected_purchase_data['ID']
 
         if selected_purchase_data is not None:
             st.write("")
@@ -337,21 +337,21 @@ with col_b:
 
             with col_edit:
                 if st.button("✏️ Edit Purchase"):
-                    st.session_state.show_edit_dialog = True
+                    st.session_state.purch_show_edit_dialog = True
 
             with col_delete:
                 if st.button("🗑️ Delete Purchase"):
-                    st.session_state.show_delete_dialog = True
+                    st.session_state.purch_show_delete_dialog = True
 
 # Show dialogs based on state
-if st.session_state.show_edit_dialog and st.session_state.selected_purchase_id:
-    matching = df[df['ID'] == st.session_state.selected_purchase_id]
+if st.session_state.purch_show_edit_dialog and st.session_state.purch_selected_id:
+    matching = df[df['ID'] == st.session_state.purch_selected_id]
     if not matching.empty:
         purchase_data = matching.iloc[0]
-        edit_purchase_dialog(purchase_data, st.session_state.selected_purchase_id)
+        edit_purchase_dialog(purchase_data, st.session_state.purch_selected_id)
 
-if st.session_state.show_delete_dialog and st.session_state.selected_purchase_id:
-    matching = df[df['ID'] == st.session_state.selected_purchase_id]
+if st.session_state.purch_show_delete_dialog and st.session_state.purch_selected_id:
+    matching = df[df['ID'] == st.session_state.purch_selected_id]
     if not matching.empty:
         purchase_data = matching.iloc[0]
-        delete_purchase_dialog(purchase_data, st.session_state.selected_purchase_id)
+        delete_purchase_dialog(purchase_data, st.session_state.purch_selected_id)

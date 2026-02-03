@@ -25,19 +25,19 @@ if st.session_state.auth.get('is_admin', False):
     if st.sidebar.button("↩️ Admin Dashboard"):
         st.switch_page("pages/login.py")
 
-# Initialize session state
-if 'show_add_success' not in st.session_state:
-    st.session_state.show_add_success = False
-if 'show_update_success' not in st.session_state:
-    st.session_state.show_update_success = False
-if 'show_delete_success' not in st.session_state:
-    st.session_state.show_delete_success = False
-if 'selected_product_id' not in st.session_state:
-    st.session_state.selected_product_id = None
-if 'show_edit_dialog' not in st.session_state:
-    st.session_state.show_edit_dialog = False
-if 'show_delete_dialog' not in st.session_state:
-    st.session_state.show_delete_dialog = False
+# Initialize session state (page-specific keys to avoid conflicts)
+if 'inv_show_add_success' not in st.session_state:
+    st.session_state.inv_show_add_success = False
+if 'inv_show_update_success' not in st.session_state:
+    st.session_state.inv_show_update_success = False
+if 'inv_show_delete_success' not in st.session_state:
+    st.session_state.inv_show_delete_success = False
+if 'inv_selected_id' not in st.session_state:
+    st.session_state.inv_selected_id = None
+if 'inv_show_edit_dialog' not in st.session_state:
+    st.session_state.inv_show_edit_dialog = False
+if 'inv_show_delete_dialog' not in st.session_state:
+    st.session_state.inv_show_delete_dialog = False
 
 def fetch_products():
     try:
@@ -117,7 +117,7 @@ def add_product_dialog():
                 }
                 success, error = create_product(new_product)
                 if success:
-                    st.session_state.show_add_success = True
+                    st.session_state.inv_show_add_success = True
                     st.rerun()
                 else:
                     st.error(error)
@@ -154,9 +154,9 @@ def edit_product_dialog(product_data, product_id):
                 }
                 success, error = update_product(product_id, updated_product)
                 if success:
-                    st.session_state.show_update_success = True
-                    st.session_state.show_edit_dialog = False
-                    st.session_state.selected_product_id = None
+                    st.session_state.inv_show_update_success = True
+                    st.session_state.inv_show_edit_dialog = False
+                    st.session_state.inv_selected_id = None
                     st.rerun()
                 else:
                     st.error(error)
@@ -164,8 +164,8 @@ def edit_product_dialog(product_data, product_id):
             st.warning("Please fill in all required fields (marked with *)")
 
     if col2.button("❌ Cancel", use_container_width=True):
-        st.session_state.show_edit_dialog = False
-        st.session_state.selected_product_id = None
+        st.session_state.inv_show_edit_dialog = False
+        st.session_state.inv_selected_id = None
         st.rerun()
 
 
@@ -179,16 +179,16 @@ def delete_product_dialog(product_name, product_id):
     if col1.button("🗑️ Yes, Delete", use_container_width=True, type="primary"):
         success, error = delete_product(product_id)
         if success:
-            st.session_state.show_delete_success = True
-            st.session_state.show_delete_dialog = False
-            st.session_state.selected_product_id = None
+            st.session_state.inv_show_delete_success = True
+            st.session_state.inv_show_delete_dialog = False
+            st.session_state.inv_selected_id = None
             st.rerun()
         else:
             st.error(error)
 
     if col2.button("❌ Cancel", use_container_width=True):
-        st.session_state.show_delete_dialog = False
-        st.session_state.selected_product_id = None
+        st.session_state.inv_show_delete_dialog = False
+        st.session_state.inv_selected_id = None
         st.rerun()
 
 
@@ -241,17 +241,17 @@ st.dataframe(
 )
 
 # Success Messages
-if st.session_state.show_add_success:
+if st.session_state.inv_show_add_success:
     st.success("Product Added Successfully!")
-    st.session_state.show_add_success = False
+    st.session_state.inv_show_add_success = False
 
-if st.session_state.show_update_success:
+if st.session_state.inv_show_update_success:
     st.success("Product Updated Successfully!")
-    st.session_state.show_update_success = False
+    st.session_state.inv_show_update_success = False
 
-if st.session_state.show_delete_success:
+if st.session_state.inv_show_delete_success:
     st.success("Product Deleted Successfully!")
-    st.session_state.show_delete_success = False
+    st.session_state.inv_show_delete_success = False
 
 # Action Section
 st.divider()
@@ -279,7 +279,7 @@ with col_b:
         selected_product_data = None
         if selected_product_name != "Select a product to edit or delete":
             selected_product_id = st.session_state.product_names[selected_product_name]
-            st.session_state.selected_product_id = selected_product_id
+            st.session_state.inv_selected_id = selected_product_id
             selected_product_data = df[df['ID'] == selected_product_id].iloc[0]
 
         if selected_product_data is not None:
@@ -288,17 +288,17 @@ with col_b:
 
             with col_edit:
                 if st.button(f"✏️ Edit '{selected_product_name}'"):
-                    st.session_state.show_edit_dialog = True
+                    st.session_state.inv_show_edit_dialog = True
 
             with col_delete:
                 if st.button(f"🗑️ Delete '{selected_product_name}'"):
-                    st.session_state.show_delete_dialog = True
+                    st.session_state.inv_show_delete_dialog = True
 
 # Show dialogs based on state
-if st.session_state.show_edit_dialog and st.session_state.selected_product_id:
-    product_data = df[df['ID'] == st.session_state.selected_product_id].iloc[0]
-    edit_product_dialog(product_data, st.session_state.selected_product_id)
+if st.session_state.inv_show_edit_dialog and st.session_state.inv_selected_id:
+    product_data = df[df['ID'] == st.session_state.inv_selected_id].iloc[0]
+    edit_product_dialog(product_data, st.session_state.inv_selected_id)
 
-if st.session_state.show_delete_dialog and st.session_state.selected_product_id:
-    product_name = df[df['ID'] == st.session_state.selected_product_id].iloc[0]['Product']
-    delete_product_dialog(product_name, st.session_state.selected_product_id)
+if st.session_state.inv_show_delete_dialog and st.session_state.inv_selected_id:
+    product_name = df[df['ID'] == st.session_state.inv_selected_id].iloc[0]['Product']
+    delete_product_dialog(product_name, st.session_state.inv_selected_id)
