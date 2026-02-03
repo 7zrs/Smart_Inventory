@@ -215,11 +215,22 @@ if user_input:
             if non_confirmation_tasks:
                 with st.chat_message("assistant"):
                     for task in non_confirmation_tasks:
-                        response = task.get("api_action")
-                        response_content = requests.get("http://127.0.0.1:8000/"+response.split(" ")[1])
+                        api_action = task.get("api_action")
+                        payload = task.get("payload", {})
+                        
+                        # Extract method and endpoint
+                        method, endpoint = api_action.split(" ", 1)
+                        base_url = "http://127.0.0.1:8000"
+                        
+                        # Make API request with filters in payload
+                        if method == "GET":
+                            response_content = requests.get(base_url + endpoint, params=payload)
+                        else:
+                            response_content = requests.post(base_url + endpoint, json=payload)
+                            
                         data = response_content.json()
                         if isinstance(data, list) and len(data) > 0:
-                            # Get all keys except the first column
+                            # Get all keys except first column
                             columns = list(data[0].keys())[1:]  # Skip first column
                             
                             # Build markdown table header
