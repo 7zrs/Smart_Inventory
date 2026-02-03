@@ -2,35 +2,45 @@ from django.db import models
 from django.db.models import Sum
 from django.core.exceptions import ValidationError
 
+
 class Product(models.Model):
-    name = models.CharField(max_length=255, db_index=True, unique=True)  # Ensure unique product names
-    unit = models.CharField(max_length=50)  # Unit of measurement (e.g., pieces, kilograms)
-    notes = models.TextField(blank=True, null=True)  # Editable notes about the product
+    name = models.CharField(
+        max_length=255, db_index=True, unique=True
+    )  # Ensure unique product names
+    unit = models.CharField(
+        max_length=50
+    )  # Unit of measurement (e.g., pieces, kilograms)
+    notes = models.TextField(blank=True, null=True)  # Editable notes about product
 
     def purchased_amount(self):
-        """Calculate total purchased amount for this product."""
-        return sum(purchase.amount for purchase in self.purchases.all())
+        """Calculate total purchased amount for this product using database aggregation."""
+        return self.purchases.aggregate(total=models.Sum("amount"))["total"] or 0
 
     def sold_amount(self):
-        """Calculate total sold amount for this product."""
-        return sum(sale.amount for sale in self.sales.all())
+        """Calculate total sold amount for this product using database aggregation."""
+        return self.sales.aggregate(total=models.Sum("amount"))["total"] or 0
 
     def stock_level(self):
-        """Calculate current stock level (purchased - sold)."""
-        return self.purchased_amount() - self.sold_amount()
+        """Calculate current stock level (purchased - sold) using database aggregation."""
+        purchased = self.purchases.aggregate(total=models.Sum("amount"))["total"] or 0
+        sold = self.sales.aggregate(total=models.Sum("amount"))["total"] or 0
+        return purchased - sold
 
     def __str__(self):
         return f"{self.name} ({self.unit})"
 
+
 class Purchase(models.Model):
     date = models.DateField(db_index=True)  # Add index for filtering by date
     supplier = models.CharField(max_length=255, blank=True, null=True)
-    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='purchases')
+    product = models.ForeignKey(
+        "Product", on_delete=models.CASCADE, related_name="purchases"
+    )
     amount = models.PositiveIntegerField()
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('product', 'date', 'supplier')  # Prevent duplicate purchases
+        unique_together = ("product", "date", "supplier")  # Prevent duplicate purchases
 
     def clean(self):
         """
@@ -54,12 +64,14 @@ class Purchase(models.Model):
 class Sale(models.Model):
     date = models.DateField(db_index=True)  # Add index for filtering by date
     customer = models.CharField(max_length=255, blank=True, null=True)
-    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='sales')
+    product = models.ForeignKey(
+        "Product", on_delete=models.CASCADE, related_name="sales"
+    )
     amount = models.PositiveIntegerField()
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('product', 'date', 'customer')  # Prevent duplicate sales
+        unique_together = ("product", "date", "customer")  # Prevent duplicate sales
 
     def clean(self):
         """
@@ -73,7 +85,7 @@ class Sale(models.Model):
         if self.product.stock_level() < self.amount:
             raise ValidationError(
                 f"Cannot sell {self.amount} {self.product.unit}. "
-                f"Only {self.product.stock_level} {self.product.unit} available."
+                f"Only {self.product.stock_level()} {self.product.unit} available."
             )
 
     def save(self, *args, **kwargs):
