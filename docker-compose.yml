@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+    # Check if a different command is needed, but default CMD in Dockerfile should work.
