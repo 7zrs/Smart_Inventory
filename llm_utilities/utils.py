@@ -199,7 +199,7 @@ def send_to_llm(user_input):
     prompt = MAIN_PROMPT.format(user_input=user_input)
 
     # Configure the Gemini API
-    genai.configure(api_key=settings.GEMINAI_API_KEY)
+    genai.configure(api_key=settings.GOOGLE_API_KEY)
 
     # Load the correct Gemini model
     model = genai.GenerativeModel("models/gemini-2.5-flash")

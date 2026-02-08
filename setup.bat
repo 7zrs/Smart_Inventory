@@ -1,0 +1,127 @@
+@echo off
+cls
+echo ========================================
+echo Smart Inventory - Automated Setup
+echo ========================================
+echo.
+
+REM Check Python
+echo [1/7] Checking Python installation...
+python --version
+if errorlevel 1 (
+    echo ERROR: Python not found
+    echo Install from https://www.python.org/downloads/
+    pause
+    exit /b 1
+)
+echo ✓ Python found
+echo.
+
+REM Create venv
+echo [2/7] Setting up virtual environment...
+if not exist venv (
+    python -m venv venv
+    echo ✓ Created virtual environment
+) else (
+    echo ✓ Virtual environment exists
+)
+call venv\Scripts\activate.bat
+echo.
+
+REM Install dependencies
+echo [3/7] Installing dependencies...
+pip install -q -r requirements.txt
+echo ✓ Dependencies installed
+echo.
+
+REM Setup .env
+echo [4/7] Setting up environment file...
+if exist .env (
+    echo ✓ .env already exists (keeping existing)
+    goto skip_env_setup
+)
+
+REM Create .env from template
+if not exist .env.example (
+    echo ERROR: .env.example not found
+    pause
+    exit /b 1
+)
+
+copy .env.example .env
+echo ✓ Created .env from template
+echo.
+
+REM Generate SECRET_KEY
+echo Generating Django SECRET_KEY...
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > temp_key.txt
+set /p SECRET_KEY=<temp_key.txt
+del temp_key.txt
+powershell -Command "(Get-Content .env) -replace 'SECRET_KEY=your-secret-key-here', 'SECRET_KEY=%SECRET_KEY%' | Set-Content .env"
+echo ✓ SECRET_KEY generated
+echo.
+
+REM Prompt for API key
+echo ========================================
+echo Google Gemini API Key Required
+echo ========================================
+echo.
+echo Get your FREE API key from:
+echo https://makersuite.google.com/app/apikey
+echo.
+echo You can:
+echo   1. Enter it now
+echo   2. Press Enter to skip (add later to .env)
+echo.
+set /p GEMINI_KEY=Paste your API key or press Enter to skip:
+
+if "%GEMINI_KEY%"=="" (
+    echo.
+    echo ⚠ Skipped API key - edit .env later
+) else (
+    powershell -Command "(Get-Content .env) -replace 'GOOGLE_API_KEY=YOUR_NEW_GEMINI_API_KEY_HERE', 'GOOGLE_API_KEY=%GEMINI_KEY%' | Set-Content .env"
+    powershell -Command "(Get-Content .env) -replace 'GOOGLE_API_KEY=your-gemini-api-key-here', 'GOOGLE_API_KEY=%GEMINI_KEY%' | Set-Content .env"
+    echo ✓ API key saved to .env
+)
+echo.
+
+:skip_env_setup
+
+REM Migrations
+echo [5/7] Running database migrations...
+python manage.py migrate
+if errorlevel 1 (
+    echo ⚠ Migration had issues (continuing anyway)
+)
+echo ✓ Migrations complete
+echo.
+
+REM Superuser
+echo [6/7] Admin account setup...
+echo.
+set /p CREATE_ADMIN=Create admin account now? (Y/N):
+if /i "%CREATE_ADMIN%"=="Y" (
+    python manage.py createsuperuser
+) else (
+    echo Skipped - run later: python manage.py createsuperuser
+)
+echo.
+
+REM Complete
+echo [7/7] Finalizing...
+echo.
+echo ========================================
+echo ✓ Setup Complete!
+echo ========================================
+echo.
+echo Next steps:
+echo   1. Run: run_project.bat
+echo   2. Visit: http://localhost:8501
+echo.
+if "%GEMINI_KEY%"=="" (
+    echo Remember to add your API key to .env:
+    echo   GOOGLE_API_KEY=your-key-here
+    echo.
+)
+echo ========================================
+pause

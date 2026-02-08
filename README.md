@@ -8,10 +8,9 @@ A modern, AI-powered inventory management system that combines the robustness of
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [Quick Start](#quick-start)
 - [Tech Stack](#tech-stack)
 - [System Architecture](#system-architecture)
-- [Installation](#installation)
-- [Usage](#usage)
 - [API Documentation](#api-documentation)
 - [AI Assistant](#ai-assistant)
 - [Project Structure](#project-structure)
@@ -83,26 +82,55 @@ The Smart Inventory Management System is a comprehensive solution designed for b
 
 ---
 
+## 📥 Quick Start
+
+### Prerequisites
+- Python 3.8+ installed ([Download here](https://www.python.org/downloads/))
+- Google Gemini API Key ([Get one FREE here](https://makersuite.google.com/app/apikey))
+
+### Installation (Automated Setup)
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd Smart_Inventory
+   ```
+
+2. **Run the setup script:**
+   ```bash
+   .\setup.bat
+   ```
+
+   The script will automatically:
+   - ✅ Create virtual environment
+   - ✅ Install all dependencies
+   - ✅ Generate Django SECRET_KEY
+   - ✅ Create .env file
+   - ✅ Prompt for your Gemini API key
+   - ✅ Run database migrations
+   - ✅ Create admin account
+
+   **That's it!** The script does everything for you.
+
+### Usage
+
+**Start the application:**
+```bash
+.\run_project.bat
+```
+
+**Access the app:**
+- 🌐 Frontend: http://localhost:8501
+- 🔧 Django API: http://localhost:8000/api/
+- 👤 Admin Panel: http://localhost:8000/admin/
+
+---
+
 ## 🛠️ Tech Stack
 
-### Backend
-- **Django 5.1.6**: Web framework for building the API
-- **Django REST Framework 3.15.2**: RESTful API toolkit
-- **SQLite3**: Development database (PostgreSQL-ready for production)
-- **Python 3.8+**: Programming language
-
-### Frontend
-- **Streamlit 1.42.2**: Interactive web interface
-- **Pandas 2.2.3**: Data manipulation and display
-- **Plotly**: Interactive visualizations (if needed)
-
-### AI & Machine Learning
-- **Google Gemini 2.5-flash**: Natural language processing
-- **google-generativeai 0.8.5+**: Python SDK for Gemini API
-
-### Additional Libraries
-- **python-dotenv**: Environment variable management
-- **requests**: HTTP library for API calls
+**Backend:** Django 5.1.6, Django REST Framework 3.15.2, SQLite3
+**Frontend:** Streamlit 1.42.2, Pandas 2.2.3
+**AI:** Google Gemini 2.5-flash, google-generativeai 0.8.5+
 
 ---
 
@@ -166,119 +194,6 @@ The Smart Inventory Management System is a comprehensive solution designed for b
    - AI_Assistant.py: AI interface
    - Admin.py: User management
    - login.py: Authentication
-
----
-
-## 📥 Installation
-
-### Prerequisites
-
-- **Python 3.8+** installed
-- **pip** package manager
-- **Git** (for cloning)
-- **Google AI Studio API Key** ([Get one here](https://makersuite.google.com/app/apikey))
-
-### Step-by-Step Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Smart_Inventory
-   ```
-
-2. **Create a virtual environment**
-   ```bash
-   # Windows
-   python -m venv venv
-   venv\Scripts\activate
-
-   # Linux/Mac
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables**
-
-   Create a `.env` file in the root directory:
-   ```env
-   # Django Settings
-   SECRET_KEY=your-django-secret-key-here
-   DEBUG=True
-   ALLOWED_HOSTS=localhost,127.0.0.1
-
-   # Google AI
-   GEMINAI_API_KEY=your-gemini-api-key-here
-
-   # Database (optional, defaults to SQLite)
-   # DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-   ```
-
-5. **Run database migrations**
-   ```bash
-   python manage.py migrate
-   ```
-
-6. **Create a superuser (admin account)**
-   ```bash
-   python manage.py createsuperuser
-   ```
-   Follow the prompts to set username and password.
-
-7. **Load sample data (optional)**
-   ```bash
-   python manage.py loaddata sample_data.json
-   ```
-
----
-
-## 🚀 Usage
-
-### Starting the Application
-
-You need to run both the Django backend and Streamlit frontend:
-
-#### Option 1: Using the Batch Script (Windows)
-
-Simply double-click `run_project.bat` or run:
-```bash
-.\run_project.bat
-```
-
-This will:
-- Check for Python installation
-- Activate the virtual environment
-- Install/update dependencies
-- Run migrations
-- Start both Django and Streamlit servers
-
-#### Option 2: Manual Start
-
-**Terminal 1 - Django Backend:**
-```bash
-python manage.py runserver
-```
-
-**Terminal 2 - Streamlit Frontend:**
-```bash
-streamlit run streamlit_app.py
-```
-
-### Accessing the Application
-
-- **Frontend (Main App)**: http://localhost:8501
-- **Django API**: http://localhost:8000/api/
-- **Django Admin Panel**: http://localhost:8000/admin/
-
-### First Login
-
-1. Navigate to http://localhost:8501
-2. Log in with your superuser credentials
-3. If you're an admin, you'll see the Admin Dashboard option
 
 ---
 
@@ -469,7 +384,7 @@ Smart_Inventory/
 | `SECRET_KEY` | Django secret key | - | Yes |
 | `DEBUG` | Debug mode | `False` | No |
 | `ALLOWED_HOSTS` | Allowed hosts | `localhost,127.0.0.1` | No |
-| `GEMINAI_API_KEY` | Google Gemini API key | - | Yes |
+| `GOOGLE_API_KEY` | Google Gemini API key | - | Yes |
 | `DATABASE_URL` | Database connection URL | SQLite | No |
 
 ### Django Settings
