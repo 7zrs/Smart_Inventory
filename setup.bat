@@ -87,8 +87,52 @@ echo.
 
 :skip_env_setup
 
+REM Validate API key
+echo [5/7] Validating Google Gemini API key...
+for /f "tokens=2 delims==" %%a in ('findstr "GOOGLE_API_KEY" .env') do set CURRENT_KEY=%%a
+
+REM Check if key is missing or placeholder
+if "%CURRENT_KEY%"=="" goto prompt_api_key
+if "%CURRENT_KEY%"=="YOUR_NEW_GEMINI_API_KEY_HERE" goto prompt_api_key
+if "%CURRENT_KEY%"=="your-gemini-api-key-here" goto prompt_api_key
+echo ✓ API key configured
+goto api_key_done
+
+:prompt_api_key
+echo.
+echo ========================================
+echo ⚠ Google Gemini API Key Not Found
+echo ========================================
+echo.
+echo The AI Assistant requires a Google Gemini API key.
+echo.
+echo Get your FREE API key from:
+echo https://makersuite.google.com/app/apikey
+echo.
+echo You can:
+echo   1. Enter your API key now
+echo   2. Press Enter to skip (AI Assistant will NOT work)
+echo.
+set /p NEW_API_KEY=Paste your API key here:
+
+if "%NEW_API_KEY%"=="" (
+    echo.
+    echo ⚠⚠⚠ WARNING ⚠⚠⚠
+    echo API key not provided - AI Assistant will NOT work
+    echo You can add it later by editing .env file
+    echo Look for: GOOGLE_API_KEY=your-key-here
+    echo.
+    pause
+) else (
+    powershell -Command "(Get-Content .env) -replace 'GOOGLE_API_KEY=.*', 'GOOGLE_API_KEY=%NEW_API_KEY%' | Set-Content .env"
+    echo ✓ API key saved to .env
+)
+echo.
+
+:api_key_done
+
 REM Migrations
-echo [5/7] Running database migrations...
+echo [6/7] Running database migrations...
 python manage.py migrate
 if errorlevel 1 (
     echo ⚠ Migration had issues (continuing anyway)
@@ -97,7 +141,7 @@ echo ✓ Migrations complete
 echo.
 
 REM Superuser
-echo [6/7] Admin account setup...
+echo [7/7] Admin account setup...
 echo.
 set /p CREATE_ADMIN=Create admin account now? (Y/N):
 if /i "%CREATE_ADMIN%"=="Y" (
@@ -108,7 +152,7 @@ if /i "%CREATE_ADMIN%"=="Y" (
 echo.
 
 REM Complete
-echo [7/7] Finalizing...
+echo Finalizing...
 echo.
 echo ========================================
 echo ✓ Setup Complete!

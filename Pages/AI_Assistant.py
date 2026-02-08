@@ -230,25 +230,41 @@ if user_input:
                             
                         data = response_content.json()
                         if isinstance(data, list) and len(data) > 0:
+                            # Create product ID to name mapping
+                            product_map = {}
+                            if products:
+                                for p in products:
+                                    product_map[p.get('id')] = p.get('name', 'Unknown')
+
                             # Get all keys except first column
-                            columns = list(data[0].keys())[1:]  # Skip first column
-                            
+                            columns = list(data[0].keys())[1:]  # Skip first column (id)
+
                             # Build markdown table header
                             markdown_text = "| " + " | ".join(columns) + " |\n"
                             markdown_text += "| " + " | ".join(["---"] * len(columns)) + " |\n"
-                            
+
                             # Add rows (keeping all rows but skipping first column in each)
                             for row in data:
-                                values = list(row.values())[1:]  # Skip first column value
-                                markdown_text += "| " + " | ".join(str(v) for v in values) + " |\n"
-                            
+                                values = list(row.values())[1:]  # Skip first column value (id)
+
+                                # Replace product ID with product name if this is sales/purchases
+                                processed_values = []
+                                for i, (key, val) in enumerate(zip(columns, values)):
+                                    if key == 'product' and isinstance(val, int):
+                                        # Replace product ID with product name
+                                        processed_values.append(product_map.get(val, f"ID: {val}"))
+                                    else:
+                                        processed_values.append(str(val))
+
+                                markdown_text += "| " + " | ".join(processed_values) + " |\n"
+
                             st.session_state.messages.append({
-                                "role": "assistant", 
+                                "role": "assistant",
                                 "content": markdown_text
                             })
                         else:
                             st.session_state.messages.append({
-                                "role": "assistant", 
+                                "role": "assistant",
                                 "content": "No data found"
                             })
             
