@@ -308,7 +308,9 @@ def execute_api_request(api_action, payload, filters=None):
             response = requests.delete(base_url + endpoint)
 
         # Check for errors in the API response
-        if response.status_code not in [200, 201, 204]:
+        if response.status_code == 429:
+            raise Exception(f"Rate Limited: API quota reached. Please try again later.")
+        elif response.status_code not in [200, 201, 204]:
             raise Exception(f"API request failed: {response.text}")
 
     except Exception as e:
