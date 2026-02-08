@@ -28,7 +28,8 @@ if st.session_state.auth.get('is_admin', False):
         st.switch_page("pages/login.py")
 
 st.title("🤖 AI Assistant")
-st.markdown("### Control your inventory with natural language")
+st.markdown(f"#### Hello {st.session_state.auth['username']}!, control your inventory with natural language")
+st.divider()
 
 # Initialize chat history and task state in session state
 if "messages" not in st.session_state:
@@ -182,7 +183,7 @@ if st.session_state.pending_tasks and st.session_state.current_task_index is not
             st.rerun()
 
 # Chat interface
-user_input = st.chat_input("Ask about stock, add notes, or get insights...")
+user_input = st.chat_input("Ask about stock, add products, or try multiple...")
 
 if user_input:
     # Add user message to chat history
@@ -214,11 +215,22 @@ if user_input:
             if non_confirmation_tasks:
                 with st.chat_message("assistant"):
                     for task in non_confirmation_tasks:
-                        response = task.get("api_action")
-                        response_content = requests.get("http://127.0.0.1:8000/"+response.split(" ")[1])
+                        api_action = task.get("api_action")
+                        payload = task.get("payload", {})
+                        
+                        # Extract method and endpoint
+                        method, endpoint = api_action.split(" ", 1)
+                        base_url = "http://127.0.0.1:8000"
+                        
+                        # Make API request with filters in payload
+                        if method == "GET":
+                            response_content = requests.get(base_url + endpoint, params=payload)
+                        else:
+                            response_content = requests.post(base_url + endpoint, json=payload)
+                            
                         data = response_content.json()
                         if isinstance(data, list) and len(data) > 0:
-                            # Get all keys except the first column
+                            # Get all keys except first column
                             columns = list(data[0].keys())[1:]  # Skip first column
                             
                             # Build markdown table header
@@ -268,9 +280,9 @@ if user_input:
 
 # Example questions
 st.markdown("### Try asking:")
-st.markdown("- What's my current stock level for Milk?")
-st.markdown("- Add a note to Apples: 'Order more next week'")
-st.markdown("- Which items need restocking?")
+st.markdown("- Show products")
 st.markdown("- Add a new product named Laptop with unit pieces")
-st.markdown("- Show all products with low stock (less than 10)")
 st.markdown("- Record a purchase of 5 Laptops from SupplierX")
+st.markdown("- Sell 2 laptops to customer1 and 1 to customer2")
+st.markdown("- What's my current stock level for (name of the product)")
+st.markdown("- **Get creative!, I can understand any language or dialect**")

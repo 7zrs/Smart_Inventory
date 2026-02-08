@@ -7,6 +7,7 @@ from datetime import date
 
 today = date.today()
 
+
 def send_to_llm(user_input):
     """
     Sends the user input to Gemini AI and returns the structured response.
@@ -15,10 +16,39 @@ def send_to_llm(user_input):
     MAIN_PROMPT = """
     Analyze this prompt: '{user_input}' and determine the user's intention. Use the following guidelines:
 
-    1. **For Search**:  
+1. **For Search**:  
     - If the user is looking for information, interpret it as a `GET` request.  
     - Example: "Find products with low stock" → Make a `GET` request to `/api/products/?stock_level__lt=10`.  
-    - Support filters like `name`, `unit`, or `stock_level`.
+    - Support filters like `name`, `unit`, `notes`, and `stock_level` with Django-style lookups:
+      - `stock_level__lt=10` (less than 10)
+      - `stock_level__gt=50` (greater than 50) 
+      - `stock_level__lte=5` (less than or equal to 5)
+      - `stock_level__gte=20` (greater than or equal to 20)
+      - `stock_level__exact=15` (exactly 15)
+    - Example: "Show products with more than 100 units" → `/api/products/?stock_level__gt=100`
+    - Example: "Find products named Laptop with exactly 5 units" → `/api/products/?name__icontains=Laptop&stock_level__exact=5`
+
+2. **For Purchases**:
+- Support filters like `date`, `supplier`, `product`, `amount`, `notes` with Django-style lookups:
+  - `date__gte=2025-01-01` (date greater than or equal to)
+  - `date__lte=2025-12-31` (date less than or equal to)
+  - `supplier__icontains=SupplierName` (supplier contains text)
+  - `amount__gt=100` (amount greater than 100)
+  - `amount__lt=50` (amount less than 50)
+  - `notes__icontains=discount` (notes contain text)
+- Example: "Find purchases with discount notes" → `/api/purchases/?notes__icontains=discount`
+- Example: "Find purchases from Chinese supplier" → `/api/purchases/?supplier__icontains=Chinese`
+
+3. **For Sales**:
+- Support filters like `date`, `customer`, `product`, `amount`, `notes` with Django-style lookups:
+  - `date__gte=2025-01-01` (date greater than or equal to)
+  - `date__lte=2025-12-31` (date less than or equal to)
+  - `customer__icontains=CustomerName` (customer contains text)
+  - `amount__gt=100` (amount greater than 100)
+  - `amount__lt=50` (amount less than 50)
+  - `notes__icontains=special` (notes contain text)
+- Example: "Find sales with special notes" → `/api/sales/?notes__icontains=special`
+- Example: "Find sales to customer John" → `/api/sales/?customer__icontains=John`
 
     2. **For Add**:  
     - If the user wants to add a new item, interpret it as a `POST` request.  
@@ -43,10 +73,15 @@ def send_to_llm(user_input):
     - If the user wants to remove an item, interpret it as a `DELETE` request.  
     - Example: "Remove the product named Laptop" → Make a `DELETE` request to `/api/products/{{id}}/`.
 
-    5. **For Show**:  
+5. **For Show**:  
     - If the user wants to view data, interpret it as a `GET` request.  
     - Example: "Show all products" → Fetch data from `/api/products/`.  
-    - Support filters like `name`, `unit`, or `stock_level`.
+    - Support filters for all models:
+      - **Products**: `name`, `unit`, `notes`, `stock_level` with all Django lookup expressions
+      - **Purchases**: `date`, `supplier`, `product`, `amount`, `notes` with all Django lookup expressions  
+      - **Sales**: `date`, `customer`, `product`, `amount`, `notes` with all Django lookup expressions
+    - Example: "Show purchases with discount" → `/api/purchases/?notes__icontains=discount`
+    - Example: "Show sales to customer Ali" → `/api/sales/?customer__icontains=Ali`
 
     6. **Schema Details**:  
     - Here’s what you need to know about the schemas:  
@@ -113,7 +148,7 @@ def send_to_llm(user_input):
     9. **Ambiguity Handling**:  
     - If the input is unclear or incomplete, respond with: "I’m not sure what you mean. Could you clarify?"
 
-    10. **Response Structure**:  
+10. **Response Structure**:  
         - Always return the response in the following JSON format:  
         ```json
         [
@@ -128,12 +163,38 @@ def send_to_llm(user_input):
             }}
         ]
         ```
+        
+    11. **Important Notes for GET Requests**:
+        - For GET requests (search, show), put ALL filter parameters in the `payload` object
+        - Do NOT use a separate `filters` object
+        - Example: "Find products with low stock" → 
+        ```json
+        {{
+            "intent": "show",
+            "api_action": "GET /api/products/",
+            "payload": {{
+                "stock_level__lt": 10
+            }},
+            "confirmation_message": null
+        }}
+        ```
+        - Example: "Find purchases with discount notes" → 
+        ```json
+        {{
+            "intent": "show", 
+            "api_action": "GET /api/purchases/",
+            "payload": {{
+                "notes__icontains": "discount"
+            }},
+            "confirmation_message": null
+        }}
+        ```
 
     Return the interpreted intent, the corresponding API action, and any necessary details for execution.
     Note: Don't send a task to update calculated fields
     Note: For purchases/sales if the date is not mentioned or mentioned as today, use the current date: 
     """ + today.isoformat()
-        
+
     # Format the prompt with the user input
     prompt = MAIN_PROMPT.format(user_input=user_input)
 
@@ -141,7 +202,7 @@ def send_to_llm(user_input):
     genai.configure(api_key=settings.GEMINAI_API_KEY)
 
     # Load the correct Gemini model
-    model = genai.GenerativeModel('models/gemini-2.0-flash')
+    model = genai.GenerativeModel("models/gemini-2.5-flash")
 
     try:
         # Generate a response from the LLM
@@ -155,10 +216,10 @@ def send_to_llm(user_input):
 
         # Parse the LLM output into a structured JSON format
         try:
-            start = llm_output.find('[')
-            end = llm_output.find(']')
-            content_inside_brackets = llm_output[start: end + 1]
-            structured_response = json.loads(content_inside_brackets  )
+            start = llm_output.find("[")
+            end = llm_output.find("]")
+            content_inside_brackets = llm_output[start : end + 1]
+            structured_response = json.loads(content_inside_brackets)
 
             # Check if the response contains an error (e.g., ambiguity handling)
             if isinstance(structured_response, dict) and "error" in structured_response:
@@ -176,8 +237,10 @@ def send_to_llm(user_input):
 
     except Exception as e:
         # Catch any unexpected errors and provide a meaningful message
-        raise ValidationError(f"An error occurred while processing your request: {str(e)}")
-    
+        raise ValidationError(
+            f"An error occurred while processing your request: {str(e)}"
+        )
+
 
 def parse_and_store_tasks(llm_response):
     """
@@ -190,6 +253,7 @@ def parse_and_store_tasks(llm_response):
         intent = task.get("intent")
         api_action = task.get("api_action")
         payload = task.get("payload", {})
+        filters = task.get("filters", {})
         confirmation_message = task.get("confirmation_message")
 
         # Validate required fields
@@ -197,37 +261,45 @@ def parse_and_store_tasks(llm_response):
             raise ValueError("Invalid task format: Missing 'intent' or 'api_action'.")
 
         # Store the task details
-        tasks.append({
-            "intent": intent,
-            "api_action": api_action,
-            "payload": payload,
-            "confirmation_message": confirmation_message
-        })
+        tasks.append(
+            {
+                "intent": intent,
+                "api_action": api_action,
+                "payload": payload,
+                "filters": filters,
+                "confirmation_message": confirmation_message,
+            }
+        )
 
     return tasks
 
+
 def confirm_and_execute_tasks(tasks):
     """
-    Executes the API requests for the given tasks.
+    Executes API requests for given tasks.
     """
     for task in tasks:
         api_action = task["api_action"]
         payload = task["payload"]
+        filters = task.get("filters", {})
 
         # Execute the API request
-        execute_api_request(api_action, payload)
-        print(f"Executed: {api_action} with payload {payload}")
+        execute_api_request(api_action, payload, filters)
+        print(f"Executed: {api_action} with payload {payload} and filters {filters}")
 
-def execute_api_request(api_action, payload):
+
+def execute_api_request(api_action, payload, filters=None):
     """
-    Executes the API request based on the provided action and payload.
+    Executes the API request based on the provided action, payload, and filters.
     """
     method, endpoint = api_action.split(" ", 1)  # Split into HTTP method and endpoint
-    base_url = "http://127.0.0.1:8000"  
+    base_url = "http://127.0.0.1:8000"
 
     try:
         if method == "GET":
-            response = requests.get(base_url + endpoint, params=payload)
+            # For GET requests, use filters as query parameters, fallback to payload
+            query_params = filters if filters else payload
+            response = requests.get(base_url + endpoint, params=query_params)
         elif method == "POST":
             response = requests.post(base_url + endpoint, json=payload)
         elif method in ["PUT", "PATCH"]:
@@ -243,7 +315,8 @@ def execute_api_request(api_action, payload):
 
     except Exception as e:
         raise Exception(f"Error executing API request: {str(e)}")
-    
+
+
 # Main Function to Orchestrate the Workflow
 def process_user_input(user_input):
     """
@@ -251,7 +324,7 @@ def process_user_input(user_input):
     and returning the tasks for confirmation.
     """
     try:
-        #Send the user input to the LLM
+        # Send the user input to the LLM
         llm_response = send_to_llm(user_input)
 
         # Parse and store the tasks from the LLM response
