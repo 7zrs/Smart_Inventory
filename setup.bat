@@ -133,9 +133,11 @@ echo.
 
 REM Migrations
 echo [6/7] Running database migrations...
-python manage.py migrate
+python manage.py migrate --run-syncdb
 if errorlevel 1 (
-    echo ⚠ Migration had issues (continuing anyway)
+    echo ⚠ Migration failed. Try deleting db.sqlite3 and running setup again.
+    pause
+    exit /b 1
 )
 echo ✓ Migrations complete
 echo.
