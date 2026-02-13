@@ -49,20 +49,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Running installer (this may take a minute)...
-"%TEMP%\python-3.13.1-installer.exe" /passive PrependPath=1 Include_launcher=1
-if errorlevel 1 (
-    echo ERROR: Python installation failed.
-    echo Please install Python 3.13 manually from:
-    echo https://www.python.org/downloads/release/python-3131/
-    pause
-    exit /b 1
-)
+echo.
+echo ========================================
+echo IMPORTANT: In the installer, make sure to
+echo check "Add python.exe to PATH" at the bottom!
+echo ========================================
+echo.
+echo Launching Python installer...
+start /wait "" "%TEMP%\python-3.13.1-installer.exe"
 
 del "%TEMP%\python-3.13.1-installer.exe" >nul 2>&1
 
-echo.
-echo ✓ Python 3.13.1 installed successfully!
 echo.
 echo Please close this window and run setup.bat again
 echo so the new Python is available in your PATH.
