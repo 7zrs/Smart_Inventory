@@ -5,74 +5,92 @@ echo Smart Inventory - Automated Setup
 echo ========================================
 echo.
 
-REM Check Python
+REM ---- Set PYTHON_CMD variable ----
+REM Check system Python first, fall back to local embedded Python
+set PYTHON_CMD=
+
+REM Check system Python
 echo [1/7] Checking Python installation...
-set NEED_PYTHON_INSTALL=0
-
 python --version >nul 2>&1
-if errorlevel 1 (
-    echo Python not found on this system.
-    set NEED_PYTHON_INSTALL=1
-    goto :install_python
-)
+if errorlevel 1 goto :no_system_python
 
-REM Validate Python version (requires 3.9 - 3.13)
 for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set PYTHON_VERSION=%%v
 for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
     set PY_MAJOR=%%a
     set PY_MINOR=%%b
 )
 
-if %PY_MAJOR% NEQ 3 set NEED_PYTHON_INSTALL=1
-if %PY_MINOR% LSS 9 set NEED_PYTHON_INSTALL=1
-if %PY_MINOR% GEQ 14 set NEED_PYTHON_INSTALL=1
+set SYSTEM_OK=1
+if %PY_MAJOR% NEQ 3 set SYSTEM_OK=0
+if %PY_MINOR% LSS 9 set SYSTEM_OK=0
+if %PY_MINOR% GEQ 14 set SYSTEM_OK=0
 
-if %NEED_PYTHON_INSTALL%==1 (
-    echo Found Python %PYTHON_VERSION% - not compatible (requires 3.9 - 3.13^)
-    goto :install_python
+if %SYSTEM_OK%==1 (
+    set PYTHON_CMD=python
+    echo ✓ Python %PYTHON_VERSION% found (compatible^)
+    echo.
+    goto :python_ready
 )
 
-echo ✓ Python %PYTHON_VERSION% found (compatible)
-echo.
-goto :python_ready
+echo Found Python %PYTHON_VERSION% - not compatible (requires 3.9 - 3.13^)
+goto :need_embedded
 
-:install_python
+:no_system_python
+echo Python not found on this system.
+
+:need_embedded
+REM Check if embedded Python already exists
+if exist python\python.exe (
+    set PYTHON_CMD=python\python.exe
+    echo ✓ Using local embedded Python
+    echo.
+    goto :python_ready
+)
+
 echo.
-echo Installing Python 3.13.1 automatically...
-echo Downloading installer from python.org...
-powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.13.1/python-3.13.1-amd64.exe' -OutFile '%TEMP%\python-3.13.1-installer.exe'"
+echo Downloading portable Python 3.13.1 (no install needed)...
+powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.13.1/python-3.13.1-embed-amd64.zip' -OutFile '%TEMP%\python-embed.zip'"
 if errorlevel 1 (
-    echo ERROR: Failed to download Python installer.
-    echo Please install Python 3.13 manually from:
-    echo https://www.python.org/downloads/release/python-3131/
+    echo ERROR: Failed to download Python.
+    echo Please check your internet connection and try again.
     pause
     exit /b 1
 )
 
-echo.
-echo ========================================
-echo IMPORTANT: In the installer, make sure to
-echo check "Add python.exe to PATH" at the bottom!
-echo ========================================
-echo.
-echo Launching Python installer...
-start /wait "" "%TEMP%\python-3.13.1-installer.exe"
+echo Extracting...
+powershell -Command "Expand-Archive -Path '%TEMP%\python-embed.zip' -DestinationPath 'python' -Force"
+if errorlevel 1 (
+    echo ERROR: Failed to extract Python.
+    pause
+    exit /b 1
+)
+del "%TEMP%\python-embed.zip" >nul 2>&1
 
-del "%TEMP%\python-3.13.1-installer.exe" >nul 2>&1
+REM Enable pip support: uncomment "import site" in ._pth file
+powershell -Command "(Get-Content 'python\python313._pth') -replace '#import site','import site' | Set-Content 'python\python313._pth'"
 
+REM Install pip
+echo Installing pip...
+powershell -Command "Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%TEMP%\get-pip.py'"
+python\python.exe "%TEMP%\get-pip.py" --no-warn-script-location >nul 2>&1
+del "%TEMP%\get-pip.py" >nul 2>&1
+
+if not exist python\Scripts\pip.exe (
+    echo ERROR: pip installation failed.
+    pause
+    exit /b 1
+)
+
+set PYTHON_CMD=python\python.exe
+echo ✓ Portable Python 3.13.1 ready
 echo.
-echo Please close this window and run setup.bat again
-echo so the new Python is available in your PATH.
-echo.
-pause
-exit /b 0
 
 :python_ready
 
 REM Create venv
 echo [2/7] Setting up virtual environment...
 if not exist venv (
-    python -m venv venv
+    %PYTHON_CMD% -m venv venv
     echo ✓ Created virtual environment
 ) else (
     echo ✓ Virtual environment exists
