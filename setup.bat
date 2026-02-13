@@ -115,11 +115,11 @@ echo.
 
 REM Install dependencies
 echo [3/7] Installing dependencies...
-%PIP_CMD% install -q --only-binary :all: -r requirements.txt
+%PIP_CMD% install -q --no-warn-script-location --only-binary :all: -r requirements.txt
 if errorlevel 1 (
     echo.
     echo Retrying without binary-only constraint...
-    %PIP_CMD% install -q -r requirements.txt
+    %PIP_CMD% install -q --no-warn-script-location -r requirements.txt
 )
 echo ✓ Dependencies installed
 echo.
@@ -134,13 +134,10 @@ if exist .env (
 REM Create .env from template or generate directly
 if exist .env.example (
     copy .env.example .env >nul
-) else (
-    echo # Django Configuration> .env
-    echo SECRET_KEY=your-secret-key-here>> .env
-    echo DEBUG=True>> .env
-    echo ALLOWED_HOSTS=localhost,127.0.0.1>> .env
-    echo GOOGLE_API_KEY=your-gemini-api-key-here>> .env
+    goto :env_created
 )
+powershell -Command "Set-Content -Path '.env' -Value '# Django Configuration','SECRET_KEY=your-secret-key-here','DEBUG=True','ALLOWED_HOSTS=localhost,127.0.0.1','GOOGLE_API_KEY=your-gemini-api-key-here'"
+:env_created
 echo ✓ Created .env file
 echo.
 
