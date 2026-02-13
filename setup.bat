@@ -5,12 +5,14 @@ echo Smart Inventory - Automated Setup
 echo ========================================
 echo.
 
-REM ---- Set PYTHON_CMD variable ----
-REM Check system Python first, fall back to local embedded Python
+REM ---- Determine Python to use ----
 set PYTHON_CMD=
+set PIP_CMD=
+set USE_VENV=1
+
+echo [1/7] Checking Python installation...
 
 REM Check system Python
-echo [1/7] Checking Python installation...
 python --version >nul 2>&1
 if errorlevel 1 goto :no_system_python
 
@@ -27,6 +29,7 @@ if %PY_MINOR% GEQ 14 set SYSTEM_OK=0
 
 if %SYSTEM_OK%==1 (
     set PYTHON_CMD=python
+    set PIP_CMD=pip
     echo ✓ Python %PYTHON_VERSION% found (compatible^)
     echo.
     goto :python_ready
@@ -39,9 +42,12 @@ goto :need_embedded
 echo Python not found on this system.
 
 :need_embedded
+set USE_VENV=0
+
 REM Check if embedded Python already exists
 if exist python\python.exe (
     set PYTHON_CMD=python\python.exe
+    set PIP_CMD=python\Scripts\pip.exe
     echo ✓ Using local embedded Python
     echo.
     goto :python_ready
@@ -82,25 +88,35 @@ if not exist python\Scripts\pip.exe (
 )
 
 set PYTHON_CMD=python\python.exe
+set PIP_CMD=python\Scripts\pip.exe
 echo ✓ Portable Python 3.13.1 ready
 echo.
 
 :python_ready
 
-REM Create venv
+REM Setup environment (venv for system Python, direct for embedded)
 echo [2/7] Setting up virtual environment...
-if not exist venv (
-    %PYTHON_CMD% -m venv venv
-    echo ✓ Created virtual environment
+if %USE_VENV%==1 (
+    if not exist venv (
+        %PYTHON_CMD% -m venv venv
+        echo ✓ Created virtual environment
+    ) else (
+        echo ✓ Virtual environment exists
+    )
+    call venv\Scripts\activate.bat
 ) else (
-    echo ✓ Virtual environment exists
+    echo ✓ Using embedded Python (venv not needed^)
 )
-call venv\Scripts\activate.bat
 echo.
 
 REM Install dependencies
 echo [3/7] Installing dependencies...
-pip install -q -r requirements.txt
+%PIP_CMD% install -q --only-binary :all: -r requirements.txt
+if errorlevel 1 (
+    echo.
+    echo Retrying without binary-only constraint...
+    %PIP_CMD% install -q -r requirements.txt
+)
 echo ✓ Dependencies installed
 echo.
 
@@ -124,7 +140,7 @@ echo.
 
 REM Generate SECRET_KEY
 echo Generating Django SECRET_KEY...
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > temp_key.txt
+%PYTHON_CMD% -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > temp_key.txt
 set /p SECRET_KEY=<temp_key.txt
 del temp_key.txt
 powershell -Command "(Get-Content .env) -replace 'SECRET_KEY=your-secret-key-here', 'SECRET_KEY=%SECRET_KEY%' | Set-Content .env"
@@ -203,7 +219,7 @@ echo.
 
 REM Migrations
 echo [6/7] Running database migrations...
-python manage.py migrate --run-syncdb
+%PYTHON_CMD% manage.py migrate --run-syncdb
 if errorlevel 1 (
     echo ⚠ Migration failed. Try deleting db.sqlite3 and running setup again.
     pause
@@ -217,7 +233,7 @@ echo [7/7] Admin account setup...
 echo.
 set /p CREATE_ADMIN=Create admin account now? (Y/N):
 if /i "%CREATE_ADMIN%"=="Y" (
-    python manage.py createsuperuser
+    %PYTHON_CMD% manage.py createsuperuser
 ) else (
     echo Skipped - run later: python manage.py createsuperuser
 )
