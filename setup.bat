@@ -7,14 +7,44 @@ echo.
 
 REM Check Python
 echo [1/7] Checking Python installation...
-python --version
+python --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python not found
-    echo Install from https://www.python.org/downloads/
+    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/
     pause
     exit /b 1
 )
-echo ✓ Python found
+
+REM Validate Python version (requires 3.9 - 3.13)
+for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set PYTHON_VERSION=%%v
+for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
+    set PY_MAJOR=%%a
+    set PY_MINOR=%%b
+)
+
+if %PY_MAJOR% NEQ 3 (
+    echo ERROR: Python 3 is required. Found Python %PYTHON_VERSION%
+    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/
+    pause
+    exit /b 1
+)
+
+if %PY_MINOR% LSS 9 (
+    echo ERROR: Python 3.9 or higher is required. Found Python %PYTHON_VERSION%
+    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/
+    pause
+    exit /b 1
+)
+
+if %PY_MINOR% GEQ 14 (
+    echo ERROR: Python 3.14+ is not supported due to dependency constraints.
+    echo Found Python %PYTHON_VERSION%
+    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/release/python-3131/
+    pause
+    exit /b 1
+)
+
+echo ✓ Python %PYTHON_VERSION% found (compatible)
 echo.
 
 REM Create venv

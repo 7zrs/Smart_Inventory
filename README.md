@@ -85,7 +85,7 @@ The Smart Inventory Management System is a comprehensive solution designed for b
 ## 📥 Quick Start
 
 ### Prerequisites
-- Python 3.8+ installed ([Download here](https://www.python.org/downloads/))
+- Python 3.9 - 3.13 installed ([Download here](https://www.python.org/downloads/release/python-3131/)) — **Python 3.14+ is not supported**
 - Google Gemini API Key ([Get one FREE here](https://makersuite.google.com/app/apikey))
 
 ### Installation (Automated Setup)
