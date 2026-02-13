@@ -124,33 +124,14 @@ if errorlevel 1 (
 echo ✓ Dependencies installed
 echo.
 
-REM Setup .env
+REM Setup .env + SECRET_KEY + API key (all handled by Python for reliability)
 echo [4/7] Setting up environment file...
 if exist .env (
     echo ✓ .env already exists (keeping existing)
-    goto skip_env_setup
+    goto :env_ready
 )
 
-REM Create .env from template or generate directly
-if exist .env.example (
-    copy .env.example .env >nul
-    goto :env_created
-)
-powershell -Command "Set-Content -Path '.env' -Value '# Django Configuration','SECRET_KEY=your-secret-key-here','DEBUG=True','ALLOWED_HOSTS=localhost,127.0.0.1','GOOGLE_API_KEY=your-gemini-api-key-here'"
-:env_created
-echo ✓ Created .env file
 echo.
-
-REM Generate SECRET_KEY
-echo Generating Django SECRET_KEY...
-%PYTHON_CMD% -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > temp_key.txt
-set /p SECRET_KEY=<temp_key.txt
-del temp_key.txt
-powershell -Command "(Get-Content .env) -replace 'SECRET_KEY=your-secret-key-here', 'SECRET_KEY=%SECRET_KEY%' | Set-Content .env"
-echo ✓ SECRET_KEY generated
-echo.
-
-REM Prompt for API key
 echo ========================================
 echo Google Gemini API Key Required
 echo ========================================
@@ -162,27 +143,32 @@ echo You can:
 echo   1. Enter it now
 echo   2. Press Enter to skip (add later to .env)
 echo.
+set GEMINI_KEY=
 set /p GEMINI_KEY=Paste your API key or press Enter to skip:
 
+%PYTHON_CMD% -c "import os; from django.core.management.utils import get_random_secret_key; sk=get_random_secret_key(); api='%GEMINI_KEY%' if '%GEMINI_KEY%'!='' else 'your-gemini-api-key-here'; f=open('.env','w'); f.write(f'SECRET_KEY={sk}\nDEBUG=True\nALLOWED_HOSTS=localhost,127.0.0.1\nGOOGLE_API_KEY={api}\n'); f.close(); print('Done')"
+
+if not exist .env (
+    echo ERROR: Failed to create .env file.
+    pause
+    exit /b 1
+)
+
 if "%GEMINI_KEY%"=="" (
-    echo.
     echo ⚠ Skipped API key - edit .env later
 ) else (
-    powershell -Command "(Get-Content .env) -replace 'GOOGLE_API_KEY=YOUR_NEW_GEMINI_API_KEY_HERE', 'GOOGLE_API_KEY=%GEMINI_KEY%' | Set-Content .env"
-    powershell -Command "(Get-Content .env) -replace 'GOOGLE_API_KEY=your-gemini-api-key-here', 'GOOGLE_API_KEY=%GEMINI_KEY%' | Set-Content .env"
-    echo ✓ API key saved to .env
+    echo ✓ API key saved
 )
+echo ✓ .env created with SECRET_KEY
 echo.
 
-:skip_env_setup
+:env_ready
 
 REM Validate API key
 echo [5/7] Validating Google Gemini API key...
 for /f "tokens=2 delims==" %%a in ('findstr "GOOGLE_API_KEY" .env') do set CURRENT_KEY=%%a
 
-REM Check if key is missing or placeholder
 if "%CURRENT_KEY%"=="" goto prompt_api_key
-if "%CURRENT_KEY%"=="YOUR_NEW_GEMINI_API_KEY_HERE" goto prompt_api_key
 if "%CURRENT_KEY%"=="your-gemini-api-key-here" goto prompt_api_key
 echo ✓ API key configured
 goto api_key_done
@@ -206,14 +192,10 @@ set /p NEW_API_KEY=Paste your API key here:
 
 if "%NEW_API_KEY%"=="" (
     echo.
-    echo ⚠⚠⚠ WARNING ⚠⚠⚠
-    echo API key not provided - AI Assistant will NOT work
+    echo ⚠ API key not provided - AI Assistant will NOT work
     echo You can add it later by editing .env file
-    echo Look for: GOOGLE_API_KEY=your-key-here
-    echo.
-    pause
 ) else (
-    powershell -Command "(Get-Content .env) -replace 'GOOGLE_API_KEY=.*', 'GOOGLE_API_KEY=%NEW_API_KEY%' | Set-Content .env"
+    %PYTHON_CMD% -c "k='%NEW_API_KEY%'; lines=open('.env').readlines(); f=open('.env','w'); [f.write(l.replace(l,f'GOOGLE_API_KEY={k}\n') if l.startswith('GOOGLE_API_KEY') else l) for l in lines]; f.close()"
     echo ✓ API key saved to .env
 )
 echo.
