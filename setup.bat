@@ -48,6 +48,9 @@ REM Check if embedded Python already exists
 if exist python\python.exe (
     set PYTHON_CMD=python\python.exe
     set PIP_CMD=python\Scripts\pip.exe
+    REM Ensure project root is in path (in case of re-run)
+    findstr /C:".." python\python313._pth >nul 2>&1
+    if errorlevel 1 echo ..>> python\python313._pth
     echo ✓ Using local embedded Python
     echo.
     goto :python_ready
@@ -72,8 +75,9 @@ if errorlevel 1 (
 )
 del "%TEMP%\python-embed.zip" >nul 2>&1
 
-REM Enable pip support: uncomment "import site" in ._pth file
+REM Enable pip support and add project root to Python path
 powershell -Command "(Get-Content 'python\python313._pth') -replace '#import site','import site' | Set-Content 'python\python313._pth'"
+echo ..>> python\python313._pth
 
 REM Install pip
 echo Installing pip...
@@ -127,15 +131,17 @@ if exist .env (
     goto skip_env_setup
 )
 
-REM Create .env from template
-if not exist .env.example (
-    echo ERROR: .env.example not found
-    pause
-    exit /b 1
+REM Create .env from template or generate directly
+if exist .env.example (
+    copy .env.example .env >nul
+) else (
+    echo # Django Configuration> .env
+    echo SECRET_KEY=your-secret-key-here>> .env
+    echo DEBUG=True>> .env
+    echo ALLOWED_HOSTS=localhost,127.0.0.1>> .env
+    echo GOOGLE_API_KEY=your-gemini-api-key-here>> .env
 )
-
-copy .env.example .env
-echo ✓ Created .env from template
+echo ✓ Created .env file
 echo.
 
 REM Generate SECRET_KEY
