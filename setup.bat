@@ -7,12 +7,13 @@ echo.
 
 REM Check Python
 echo [1/7] Checking Python installation...
+set NEED_PYTHON_INSTALL=0
+
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python not found
-    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/
-    pause
-    exit /b 1
+    echo Python not found on this system.
+    set NEED_PYTHON_INSTALL=1
+    goto :install_python
 )
 
 REM Validate Python version (requires 3.9 - 3.13)
@@ -22,30 +23,54 @@ for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
     set PY_MINOR=%%b
 )
 
-if %PY_MAJOR% NEQ 3 (
-    echo ERROR: Python 3 is required. Found Python %PYTHON_VERSION%
-    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/
-    pause
-    exit /b 1
-)
+if %PY_MAJOR% NEQ 3 set NEED_PYTHON_INSTALL=1
+if %PY_MINOR% LSS 9 set NEED_PYTHON_INSTALL=1
+if %PY_MINOR% GEQ 14 set NEED_PYTHON_INSTALL=1
 
-if %PY_MINOR% LSS 9 (
-    echo ERROR: Python 3.9 or higher is required. Found Python %PYTHON_VERSION%
-    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/
-    pause
-    exit /b 1
-)
-
-if %PY_MINOR% GEQ 14 (
-    echo ERROR: Python 3.14+ is not supported due to dependency constraints.
-    echo Found Python %PYTHON_VERSION%
-    echo Install Python 3.9 - 3.13 from https://www.python.org/downloads/release/python-3131/
-    pause
-    exit /b 1
+if %NEED_PYTHON_INSTALL%==1 (
+    echo Found Python %PYTHON_VERSION% - not compatible (requires 3.9 - 3.13^)
+    goto :install_python
 )
 
 echo ✓ Python %PYTHON_VERSION% found (compatible)
 echo.
+goto :python_ready
+
+:install_python
+echo.
+echo Installing Python 3.13.1 automatically...
+echo Downloading installer from python.org...
+powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.13.1/python-3.13.1-amd64.exe' -OutFile '%TEMP%\python-3.13.1-installer.exe'"
+if errorlevel 1 (
+    echo ERROR: Failed to download Python installer.
+    echo Please install Python 3.13 manually from:
+    echo https://www.python.org/downloads/release/python-3131/
+    pause
+    exit /b 1
+)
+
+echo Running installer (this may take a minute)...
+"%TEMP%\python-3.13.1-installer.exe" /quiet InstallAllUsers=1 PrependPath=1
+if errorlevel 1 (
+    echo ERROR: Python installation failed.
+    echo Please install Python 3.13 manually from:
+    echo https://www.python.org/downloads/release/python-3131/
+    pause
+    exit /b 1
+)
+
+del "%TEMP%\python-3.13.1-installer.exe" >nul 2>&1
+
+echo.
+echo ✓ Python 3.13.1 installed successfully!
+echo.
+echo Please close this window and run setup.bat again
+echo so the new Python is available in your PATH.
+echo.
+pause
+exit /b 0
+
+:python_ready
 
 REM Create venv
 echo [2/7] Setting up virtual environment...
