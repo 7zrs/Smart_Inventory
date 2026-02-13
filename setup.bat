@@ -50,7 +50,7 @@ if errorlevel 1 (
 )
 
 echo Running installer (this may take a minute)...
-"%TEMP%\python-3.13.1-installer.exe" /quiet InstallAllUsers=1 PrependPath=1
+"%TEMP%\python-3.13.1-installer.exe" /passive PrependPath=1 Include_launcher=1
 if errorlevel 1 (
     echo ERROR: Python installation failed.
     echo Please install Python 3.13 manually from:
