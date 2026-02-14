@@ -85,8 +85,10 @@ The Smart Inventory Management System is a comprehensive solution designed for b
 ## 📥 Quick Start
 
 ### Prerequisites
-- Python 3.8+ installed ([Download here](https://www.python.org/downloads/))
+- Windows OS
 - Google Gemini API Key ([Get one FREE here](https://makersuite.google.com/app/apikey))
+
+> **Note:** If a compatible Python version (3.9 - 3.13) is not found, the setup script will automatically download a portable Python 3.13 into the project folder. No manual installation or uninstalling of existing Python versions is needed.
 
 ### Installation (Automated Setup)
 
@@ -102,6 +104,7 @@ The Smart Inventory Management System is a comprehensive solution designed for b
    ```
 
    The script will automatically:
+   - ✅ Download portable Python 3.13 if needed (no installer, no conflicts)
    - ✅ Create virtual environment
    - ✅ Install all dependencies
    - ✅ Generate Django SECRET_KEY
