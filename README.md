@@ -94,7 +94,7 @@ The Smart Inventory Management System is a comprehensive solution designed for b
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/7zrs/Smart_Inventory
    cd Smart_Inventory
    ```
 
